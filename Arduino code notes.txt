@@ -1,0 +1,123 @@
+time settings
+
+ Serial.print  ("   Requested run time settings (hours : mins : total in mns) ");
+      Serial.print  (requested_run_hours);
+      Serial.print  (" : ");
+      Serial.print  (requested_run_minutes);
+      Serial.print  (" : ");
+      Serial.println(requested_run_minutes + 60* requested_run_hours);
+
+
+int enable_db_lv_supply[] = { 0, 0, 0, 0 };
+
+
+enable_run
+enable_heater
+enable_power
+
+
+enable_lv_power:
+-------------
+	master switch neeed before turning on the LV on the individual LV power supplies
+	if enable_power == 1 then it is necessary to turn on the big fans on the blue crate
+	if enable_power == 1 it is not enough to turn on one of the 10V LVPS see also enable_db_lv_supply
+
+int enable_db_lv_supply[] = { 0, 0, 0, 0 };
+-------------------------
+There are four 10V LV power supplies in the blue crate, each powers to 10 DaughterBoards.
+
+enable_db_lv_supply[i]=1 is not enough to turn on that LVPS on needs also enable_power
+
+
+enable_heater
+-------------
+	=0 in cooldown, idle
+
+
+	=1 in warmup, burnin, 
+
+
+
+
+
+
+
+-------------
+
+DB Oven current settings and status:
+   Temperature settings (min/max) 29.00 / 35.00 °C
+   Target temperature °C 30.00
+   Current temperature Oven °C 20.06
+  s
+
+
+
+
+------
+Main power on the blue burn-in crate
+
+Connect laptop to Arduiono
+
+Establish connection to Ardunioa
+
+Should be blinking if in Idle state
+
+Type 0 for options
+
+11,1 for status
+
+Setup a dummy 5 minutes run
+
+1- set duration time:
+10,5 -> set 5 mins run burn in time
+
+Set minimum temperature that counts as burnin : 29°
+1,29
+
+Set maximum temperature that counts as burnin and before it goes overheat 32
+2,32
+
+(REDEFINE with final values)
+
+Enable the power supplies
+5,1
+6,1
+7,1
+8,1
+
+
+Check status
+11,1
+
+Start cycle
+0,1
+
+Set Thermostat hatcher temperature 31°C
+
+-----------
+
+
+
+====
+Add a way to reset the BurnInDone status to ZERO
+ 
+What to do with Target temperature? Remove entirely?
+Set to the default that we want to use?
+
+
+- Connect to room ethernet USB-C
+-optimise cycle
+
+Do a logn run
+
+
+
+
+
+
+
+
+
+
+
+
