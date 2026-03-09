@@ -1,0 +1,4 @@
+{
+  "default_port": "/dev/ttyACM0",
+  "default_baudrate": 115200
+}

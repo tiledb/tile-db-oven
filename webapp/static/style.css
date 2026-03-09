@@ -1,0 +1,184 @@
+body {
+
+background: #0f1117;
+color: #e6edf3;
+
+font-family: system-ui, sans-serif;
+
+margin:0;
+padding:0;
+
+display:flex;
+justify-content:center;
+
+}
+
+.container {
+
+width:1000px;
+padding:30px;
+
+}
+
+.title {
+
+text-align:center;
+margin-bottom:30px;
+
+color:#58a6ff;
+
+animation: fadein 1s;
+
+}
+
+.card {
+
+background:#161b22;
+
+border-radius:10px;
+
+padding:20px;
+margin-bottom:20px;
+
+box-shadow:0 0 20px rgba(0,0,0,0.5);
+
+animation: slideup 0.6s ease;
+
+}
+
+h2 {
+
+margin-top:0;
+color:#79c0ff;
+
+}
+
+button {
+
+background:#238636;
+border:none;
+
+color:white;
+
+padding:10px 15px;
+margin:5px;
+
+border-radius:6px;
+
+cursor:pointer;
+
+transition: all 0.25s ease;
+
+}
+
+button:hover {
+
+transform:translateY(-2px);
+
+background:#2ea043;
+
+box-shadow:0 5px 15px rgba(0,255,150,0.3);
+
+}
+
+input, select {
+
+background:#0d1117;
+
+border:1px solid #30363d;
+
+color:white;
+
+padding:8px;
+
+border-radius:6px;
+
+margin-right:10px;
+
+}
+
+.button-grid {
+
+display:flex;
+flex-wrap:wrap;
+
+}
+
+.manual {
+
+display:flex;
+
+}
+
+.status {
+
+margin-top:10px;
+font-weight:bold;
+
+}
+
+.connected {
+
+color:#3fb950;
+animation:pulse 2s infinite;
+
+}
+
+.disconnected {
+
+color:#f85149;
+
+}
+
+#console {
+
+background:black;
+
+color:#00ff9c;
+
+font-family:monospace;
+
+height:350px;
+
+overflow:auto;
+
+padding:10px;
+
+border-radius:6px;
+
+border:1px solid #30363d;
+
+}
+
+@keyframes fadein {
+
+from{opacity:0}
+to{opacity:1}
+
+}
+
+@keyframes slideup {
+
+from{
+
+opacity:0;
+transform:translateY(20px);
+
+}
+
+to{
+
+opacity:1;
+transform:translateY(0);
+
+}
+
+}
+
+@keyframes pulse {
+
+0%{opacity:1}
+50%{opacity:0.5}
+100%{opacity:1}
+
+}
