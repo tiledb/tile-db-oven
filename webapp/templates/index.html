@@ -1,59 +1,112 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Arduino Oven Controller</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <meta charset="UTF-8">
+  <title>DB Oven Controller</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-
 <div class="container">
 
-<h1 class="title">Arduino Oven Controller</h1>
+  <h1>DB Oven Controller</h1>
 
-<div class="card">
-<h2>Connection</h2>
+<!-- Connection box -->
+<div class="connection-box">
+  <h2>Connection   <span class="help-bubble" id="manualHelp">?</span></h2>
 
-<select id="port">
-{% for p in ports %}
-<option {% if p==default_port %}selected{% endif %}>{{p}}</option>
-{% endfor %}
-</select>
+  <!-- Row 1: Port & Baudrate & Connect/Disconnect -->
+  <div class="command-row">
+    <select id="port">
+      {% for p in ports %}
+        <option value="{{ p }}" {% if p==default_port %}selected{% endif %}>{{ p }}</option>
+      {% endfor %}
+    </select>
 
-<input type="number" id="baudrate" value="{{ default_baudrate }}" step="1" min="300" max="1000000">
+    <input type="number" id="baudrate" value="{{ default_baudrate }}" step="1">
 
-<button id="connectBtn">Connect</button>
+    <button id="connectBtn" class="btn-enable btn-glow">Connect</button>
+    <button id="disconnectBtn" class="btn-disable btn-glow">Disconnect</button>
 
-<div id="status" class="status disconnected">Disconnected</div>
+    <span id="connectionStatus">
+      <span class="led" id="connectionLed"></span>
+      <span id="connectLabel">Disconnected</span>
+    </span>
+  </div>
+
+  <!-- Row 2: Manual Command -->
+  <div class="command-row">
+    <input type="text" id="manualCmd" placeholder="Enter manual command">
+    <button id="sendBtn" class="btn-set btn-glow">Send</button>
+    <button id="downloadLogBtn" class="btn-glow">Download Log</button>
+  </div>
 </div>
 
-<!-- Quick Commands -->
-<div class="card">
-<h2>Quick Commands</h2>
-<div class="button-grid">
-<button data-cmd="0,1">Start Run</button>
-<button data-cmd="0,0">Stop Run</button>
-<button data-cmd="14,1">Read Temperature</button>
-<button data-cmd="13,1">Read Voltages</button>
-<button data-cmd="11,1">Read Settings</button>
-<button data-cmd="15,1">Debug ON</button>
-<button data-cmd="15,0">Debug OFF</button>
-</div>
-</div>
+<div class="quick-commands">
+  <h2>Quick Commands</h2>
 
-<!-- Manual command -->
-<div class="card">
-<h2>Manual Command</h2>
-<div class="manual">
-<input id="cmdInput" placeholder="example: 1,60">
-<button id="sendBtn">Send</button>
-</div>
-</div>
+  <!-- NEW Burn-in Row -->
+  <div class="command-row" id="burninRow">
+    <button id="startBurninBtn" class="quickBtn btn-glow btn-enable" data-cmd="start">Start Burn-in</button>
+    <button id="stopBurninBtn" class="quickBtn btn-glow btn-disable" data-cmd="stop">Stop Burn-in</button>
+  </div>
 
+  <!-- Running Time / Min / Max Temp in one row -->
+  <div class="command-row">
+    <button class="quickBtn btn-set btn-glow" data-cmd="setTime">Set Time</button>
+    <input type="number" id="hours" placeholder="Hours" value="{{ default_run_hours }}">
+    <input type="number" id="minutes" placeholder="Minutes" value="{{ default_run_minutes }}">
+    
+    <button class="quickBtn btn-set btn-glow" data-cmd="minTemp">Set Min</button>
+    <input type="number" id="minTemp" placeholder="Min Temp °C" value="{{ default_min_temp }}">
+    
+    <button class="quickBtn btn-set btn-glow" data-cmd="maxTemp">Set Max</button>
+    <input type="number" id="maxTemp" placeholder="Max Temp °C" value="{{ default_max_temp }}">
+  </div>
+
+  <!-- Heater / Power in one row -->
+  <div class="command-row">
+    <button class="quickBtn btn-enable btn-glow" data-cmd="enableHeater">Enable Heater</button>
+    <button class="quickBtn btn-disable btn-glow" data-cmd="disableHeater">Disable Heater</button>
+    <button class="quickBtn btn-enable btn-glow" data-cmd="enablePower">Enable Power</button>
+    <button class="quickBtn btn-disable btn-glow" data-cmd="disablePower">Disable Power</button>
+  </div>
+
+  <!-- DB LV Power Supplies in one row -->
+  <div class="command-row">
+    <button class="quickBtn btn-enable btn-glow" data-cmd="enableDB0">Enable DB0</button>
+    <button class="quickBtn btn-disable btn-glow" data-cmd="disableDB0">Disable DB0</button>
+    <button class="quickBtn btn-enable btn-glow" data-cmd="enableDB1">Enable DB1</button>
+    <button class="quickBtn btn-disable btn-glow" data-cmd="disableDB1">Disable DB1</button>
+    <button class="quickBtn btn-enable btn-glow" data-cmd="enableDB2">Enable DB2</button>
+    <button class="quickBtn btn-disable btn-glow" data-cmd="disableDB2">Disable DB2</button>
+    <button class="quickBtn btn-enable btn-glow" data-cmd="enableDB3">Enable DB3</button>
+    <button class="quickBtn btn-disable btn-glow" data-cmd="disableDB3">Disable DB3</button>
+  </div>
+
+  <!-- Read / Settings buttons in one row -->
+  <div class="command-row">
+    <button class="quickBtn btn-set btn-glow" data-cmd="readSettings">Read Settings</button>
+    <button class="quickBtn btn-set btn-glow" data-cmd="readTemp">Read Temp</button>
+    <button class="quickBtn btn-set btn-glow" data-cmd="readVolt">Read Volt</button>
+  </div>
+</div>
+ 
 <!-- Console -->
-<div class="card">
-<h2>Console</h2>
-<div id="console"></div>
+<div class="console-header">
+  Console <span class="led" id="receiveLed"></span>
+</div>
+<div class="console-box">
+  <div id="consoleOutput"></div>
+</div>
+</div>
+
+<!-- Manual Help Modal -->
+<div id="manualHelpOverlay" class="help-overlay">
+  <div class="help-content">
+    <h3>Manual Command Help</h3>
+    <pre id="manualHelpText"></pre>
+    <button id="closeHelpBtn" class="btn-glow btn-set">Close</button>
+  </div>
 </div>
 
 <script src="{{ url_for('static', filename='app.js') }}"></script>

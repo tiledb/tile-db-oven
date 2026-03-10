@@ -1,184 +1,288 @@
+/* ------------------------- Body & Container ------------------------- */
 body {
-
-background: #0f1117;
-color: #e6edf3;
-
-font-family: system-ui, sans-serif;
-
-margin:0;
-padding:0;
-
-display:flex;
-justify-content:center;
-
+  font-family: monospace;
+  background: linear-gradient(135deg, #0c0c0c, #1a1a1a);
+  color: #0f0;
+  margin: 0;
+  padding: 0;
+  transition: background 0.5s;
 }
 
 .container {
-
-width:1000px;
-padding:30px;
-
+  max-width: 950px;
+  margin: auto;
+  padding: 20px;
 }
 
-.title {
-
-text-align:center;
-margin-bottom:30px;
-
-color:#58a6ff;
-
-animation: fadein 1s;
-
+/* ------------------------- Headings ------------------------- */
+h1, h2 {
+  color: #0f0;
+  text-shadow: 0 0 5px #0f0, 0 0 15px #0f0;
 }
 
-.card {
-
-background:#161b22;
-
-border-radius:10px;
-
-padding:20px;
-margin-bottom:20px;
-
-box-shadow:0 0 20px rgba(0,0,0,0.5);
-
-animation: slideup 0.6s ease;
-
+/* ------------------------- Boxes ------------------------- */
+.connection-box,
+.quick-commands,
+.console-box {
+  background: radial-gradient(circle at top left, #1e1e1e, #111);
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 25px;
+  box-shadow: 0 0 15px rgba(0,255,0,0.1);
+  transition: box-shadow 0.3s;
 }
 
-h2 {
-
-margin-top:0;
-color:#79c0ff;
-
+.connection-box:hover,
+.quick-commands:hover,
+.console-box:hover {
+  box-shadow: 0 0 30px rgba(0,255,0,0.2);
 }
 
-button {
-
-background:#238636;
-border:none;
-
-color:white;
-
-padding:10px 15px;
-margin:5px;
-
-border-radius:6px;
-
-cursor:pointer;
-
-transition: all 0.25s ease;
-
+/* ------------------------- Command Rows ------------------------- */
+.command-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;   /* wrap if too many items */
+  margin-bottom: 12px;
 }
 
-button:hover {
-
-transform:translateY(-2px);
-
-background:#2ea043;
-
-box-shadow:0 5px 15px rgba(0,255,150,0.3);
-
+/* ------------------------- Input Fields ------------------------- */
+.command-row input[type="number"],
+.command-row select {
+  width: 70px;
+  padding: 10px;
+  border-radius: 6px;
+  border: none;
+  background-color: #111;
+  color: #0f0;
+  font-size: 15px;
+  text-align: center;
+  box-shadow: inset 0 0 5px #0f0;
+  transition: box-shadow 0.3s, transform 0.2s;
 }
 
+.command-row input[type="number"]:focus {
+  outline: none;
+  box-shadow: inset 0 0 12px #0f0;
+  transform: scale(1.05);
+}
+
+/* ------------------------- Buttons ------------------------- */
+.btn-glow {
+  padding: 10px 14px;
+  border-radius: 6px;
+  border: none;
+  font-size: 14px;
+  background: #222;      /* dark inner color */
+  color: #0f0;           /* default text */
+  min-width: 80px;
+  cursor: pointer;
+  flex-grow: 1;           /* make buttons share available row space */
+  transition: transform 0.2s, box-shadow 0.3s;
+}
+
+/* Glow colors static */
+.btn-enable.btn-glow { box-shadow: 0 0 6px #0f0; }
+.btn-disable.btn-glow { box-shadow: 0 0 6px #f00; }
+.btn-set.btn-glow { box-shadow: 0 0 6px #00f; }
+
+/* Glow animation only on hover */
+.btn-glow:hover {
+  transform: scale(1.05);
+}
+
+.btn-enable.btn-glow:hover { box-shadow: 0 0 15px #0f0, 0 0 30px #0f0 inset; }
+.btn-disable.btn-glow:hover { box-shadow: 0 0 15px #f00, 0 0 30px #f00 inset; }
+.btn-set.btn-glow:hover { box-shadow: 0 0 15px #00f, 0 0 30px #00f inset; }
+
+/* ------------------------- LEDs ------------------------- */
+.led {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 5px;
+  background-color: red;
+  box-shadow: 0 0 8px #f00;
+}
+
+.led.green {
+  background-color: #0f0;
+  box-shadow: 0 0 10px #0f0, 0 0 20px #0f0 inset;
+}
+
+.led.blink {
+  animation: ledBlink 1s infinite;
+}
+
+@keyframes ledBlink {
+  50% { opacity: 0; }
+}
+
+/* ------------------------- Console ------------------------- */
+.console-box {
+  height: 320px;
+  overflow-y: auto;
+  background: #000;
+  color: #0f0;
+  padding: 12px;
+  font-family: monospace;
+  scroll-behavior: smooth;
+  border-radius: 10px;
+  box-shadow: 0 0 15px rgba(0,255,0,0.2);
+}
+
+#consoleOutput {
+  display: block;
+}
+
+.console-line {
+  opacity: 0;
+  transform: translateY(5px);
+  animation: fadeInSlide 0.3s forwards;
+}
+
+@keyframes fadeInSlide {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ------------------------- Help Bubble ------------------------- */
+.help-bubble {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  background-color: #444;
+  color: #fff;
+  text-align: center;
+  border-radius: 50%;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.help-bubble:hover::after {
+  content: "Manual commands format: a,b (see Arduino help)";
+  position: absolute;
+  background: #333;
+  color: #0f0;
+  padding: 5px 8px;
+  border-radius: 5px;
+  top: 40px;
+  left: 0;
+  white-space: nowrap;
+  font-size: 12px;
+  z-index: 10;
+}
+
+/* ------------------------- General Inputs ------------------------- */
 input, select {
-
-background:#0d1117;
-
-border:1px solid #30363d;
-
-color:white;
-
-padding:8px;
-
-border-radius:6px;
-
-margin-right:10px;
-
+  background-color: #111;
+  color: #0f0;
 }
 
-.button-grid {
-
-display:flex;
-flex-wrap:wrap;
-
+/* Match quick commands style */
+.connection-box .command-row input[type="text"],
+.connection-box .command-row input[type="number"],
+.connection-box .command-row select {
+  background-color: #111;
+  color: #0f0;
+  font-family: monospace;
+  font-size: 15px;
+  padding: 10px;
+  border-radius: 6px;
+  border: none;
+  text-align: center;
+  box-shadow: inset 0 0 5px #0f0;
+  transition: box-shadow 0.3s, transform 0.2s;
 }
 
-.manual {
-
-display:flex;
-
+.connection-box .command-row input[type="text"]:focus,
+.connection-box .command-row input[type="number"]:focus,
+.connection-box .command-row select:focus {
+  outline: none;
+  box-shadow: inset 0 0 12px #0f0;
+  transform: scale(1.05);
 }
 
-.status {
-
-margin-top:10px;
-font-weight:bold;
-
+/* Make buttons share row space like quick commands */
+.connection-box .command-row .btn-glow {
+  flex-grow: 1;
 }
 
-.connected {
-
-color:#3fb950;
-animation:pulse 2s infinite;
-
+.connection-box .command-row select#port {
+  width: 150px;       /* wider for readability */
+  padding: 10px;
+  border-radius: 6px;
+  border: none;
+  background-color: #111;
+  color: #0f0;
+  font-size: 15px;
+  text-align: center;
+  box-shadow: inset 0 0 5px #0f0;
+  transition: box-shadow 0.3s, transform 0.2s;
 }
 
-.disconnected {
-
-color:#f85149;
-
+.connection-box .command-row select#port:focus {
+  outline: none;
+  box-shadow: inset 0 0 12px #0f0;
+  transform: scale(1.05);
 }
 
-#console {
 
-background:black;
-
-color:#00ff9c;
-
-font-family:monospace;
-
-height:350px;
-
-overflow:auto;
-
-padding:10px;
-
-border-radius:6px;
-
-border:1px solid #30363d;
-
+/* Help overlay centered in screen */
+.help-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.85);
+  display: none;       /* hidden by default */
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+  animation: fadeIn 0.3s ease-out;
 }
 
-@keyframes fadein {
-
-from{opacity:0}
-to{opacity:1}
-
+.help-content {
+  background: radial-gradient(circle at top left, #1e1e1e, #111);
+  padding: 25px 30px;
+  border-radius: 15px;
+  box-shadow: 0 0 20px #0f0;
+  max-width: 600px;
+  width: 90%;
+  text-align: left;
+  color: #0f0;
+  font-family: monospace;
+  position: relative;
 }
 
-@keyframes slideup {
-
-from{
-
-opacity:0;
-transform:translateY(20px);
-
+.help-content h3 {
+  margin-top: 0;
+  text-align: center;
+  text-shadow: 0 0 5px #0f0, 0 0 15px #0f0;
 }
 
-to{
-
-opacity:1;
-transform:translateY(0);
-
+.help-content pre {
+  background: #111;
+  padding: 15px;
+  border-radius: 8px;
+  overflow-x: auto;
+  max-height: 400px;
+  box-shadow: inset 0 0 10px #0f0;
 }
 
+/* Close button styling like quick commands */
+#closeHelpBtn {
+  display: block;
+  margin: 20px auto 0 auto;
+  padding: 10px 20px;
+  font-size: 14px;
+  cursor: pointer;
 }
 
-@keyframes pulse {
-
-0%{opacity:1}
-50%{opacity:0.5}
-100%{opacity:1}
-
+/* Fade in animation */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }

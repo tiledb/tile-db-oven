@@ -1,4 +1,8 @@
 {
   "default_port": "/dev/ttyACM0",
-  "default_baudrate": 115200
+  "default_baudrate": 115200,
+  "default_min_temp": 19,
+  "default_max_temp": 27,
+  "default_run_hours": 0,
+  "default_run_minutes": 30
 }

@@ -306,7 +306,7 @@ void loop() {
           break;
 
         case 12: // reserved
-
+          Serial.println("Piro");
           break;
 
         case 13: // voltage_read_enable
@@ -558,6 +558,9 @@ void loop() {
       Serial.println("Printing the voltages readout on analog inputs A6 to A15: ");
       for (j = 0; j < 10; j++) {
         // conversion from ADC counts to Volts for ATMega2560 see https://www.arduino.cc/reference/en/language/functions/analog-io/analogread/
+        Serial.print("Channel ");
+        Serial.print(j);
+        Serial.print(": ");
         volts = analogRead(Voltage[j]);
         Serial.print("   ADC counts: ");
         Serial.print(volts);
