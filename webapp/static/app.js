@@ -1,3 +1,6 @@
+
+const prefix = "{{ prefix }}"; // Jinja variable passed from Flask
+
 let serConnected = false;
 let consoleBuffer = [];
 
@@ -36,7 +39,8 @@ connectBtn.addEventListener("click", async () => {
         const port = portSelect.value;
         const baudrate = baudInput.value;
         try {
-            const res = await fetch("/connect", {
+          
+            const res = await fetch(`${window.APP_PREFIX}/connect`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ port, baudrate })
@@ -60,7 +64,7 @@ connectBtn.addEventListener("click", async () => {
 // --- Disconnect ---
 disconnectBtn.addEventListener("click", async () => {
     try {
-        const res = await fetch("/disconnect", {
+        const res = await fetch(`${window.APP_PREFIX}/disconnect`, {
             method: "POST",
             headers: { "Content-Type": "application/json" }
         });
@@ -129,7 +133,7 @@ document.getElementById("manualHelpOverlay").addEventListener("click", (e) => {
 const sendCommand = async (cmd) => {
     if (!serConnected) return;
     try {
-        await fetch("/send", {
+        await fetch(`${window.APP_PREFIX}/send`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ cmd }),
@@ -195,7 +199,7 @@ setInterval(async () => {
         return;
     }
     try {
-        const res = await fetch("/serial");
+        const res = await fetch(`${window.APP_PREFIX}/serial`);
         const data = await res.json();
 
         // Append only new lines

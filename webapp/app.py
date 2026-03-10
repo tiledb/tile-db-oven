@@ -6,13 +6,15 @@ import threading
 import time
 import os
 from datetime import datetime
+from werkzeug.middleware.proxy_fix import ProxyFix
+
 
 LOG_FILE = "log/all.log"
 os.makedirs("log", exist_ok=True)  # make sure folder exists
 
 
 app = Flask(__name__)
-
+app.wsgi_app = ProxyFix(app.wsgi_app, x_prefix=1)
 ser = None
 serial_buffer = []
 
@@ -25,6 +27,7 @@ default_min_temp = config.get("default_min_temp", 19)
 default_max_temp = config.get("default_max_temp", 27)
 default_run_hours = config.get("default_run_hours", 0)
 default_run_minutes = config.get("default_run_minutes", 30)
+
 
 
 
@@ -56,14 +59,19 @@ threading.Thread(target=serial_reader, daemon=True).start()
 @app.route("/")
 def index():
     ports = [p.device for p in serial.tools.list_ports.comports()]
-    return render_template("index.html", ports=ports,
-                           default_port=default_port,
-                           default_baudrate=default_baudrate,
-                           default_min_temp=default_min_temp,
-                           default_max_temp=default_max_temp,
-                           default_run_hours=default_run_hours,
-                           default_run_minutes=default_run_minutes
-                           )
+    # Read the prefix header, default to empty string if not behind proxy
+    prefix = request.script_root
+    return render_template(
+        "index.html",
+        ports=ports,
+        prefix=prefix,
+        default_port=default_port,
+        default_baudrate=default_baudrate,
+        default_min_temp=default_min_temp,
+        default_max_temp=default_max_temp,
+        default_run_hours=default_run_hours,
+        default_run_minutes=default_run_minutes
+    )
 
 
 @app.route("/connect", methods=["POST"])
@@ -115,6 +123,10 @@ def download_log():
 def serial_output():
     return jsonify(serial_buffer)
 
-
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(
+        host="0.0.0.0",
+        port=8888,
+        debug=True,
+        threaded=True
+    )
