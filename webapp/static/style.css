@@ -286,3 +286,132 @@ input, select {
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+
+/* Oven Status box matches Quick Commands */
+#ovenStatusBox input {
+  width: 70px;             /* same as quick commands inputs */
+  text-align: center;
+  font-family: monospace;
+  font-size: 15px;
+  padding: 10px;
+  border-radius: 6px;
+  border: none;
+  background-color: #111;
+  color: #0f0;
+  box-shadow: inset 0 0 5px #0f0;
+  transition: box-shadow 0.3s, transform 0.2s;
+}
+
+#ovenStatusBox input:focus {
+  outline: none;
+  box-shadow: inset 0 0 12px #0f0;
+  transform: scale(1.05);
+}
+
+
+
+.status-row{
+display:flex;
+align-items:center;
+gap:40px;
+margin:15px 0;
+}
+
+.running-time{
+font-size:20px;
+font-weight:bold;
+}
+
+.leds{
+flex-wrap:wrap;
+gap:20px;
+}
+
+.led-item{
+display:flex;
+align-items:center;
+gap:10px;
+font-size:16px;
+}
+
+.led{
+width:16px;
+height:16px;
+border-radius:50%;
+background:#500;
+box-shadow:0 0 4px #000 inset;
+}
+
+.led.green{
+background:#00ff55;
+box-shadow:0 0 10px #00ff55;
+}
+
+.led.red{
+background:#600;
+}
+
+.gauge-labels{
+display:flex;
+flex-direction:column;
+gap:6px;
+margin-top:8px;
+}
+
+.gauge-row{
+display:flex;
+align-items:center;
+gap:8px;
+font-size:16px;
+}
+
+.status-label{
+font-weight:bold;
+color:#ddd;
+}
+
+#tempGauge.running,
+#burninClock.running {
+    position: relative;
+    overflow: hidden;
+}
+
+#tempGauge.running::after,
+#burninClock.running::after {
+    content: '';
+    position: absolute;
+    top: -20%;
+    left: -20%;
+    width: 140%;
+    height: 140%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 70%);
+    animation: pulse 1.5s infinite;
+    pointer-events: none;
+}
+
+#tempGauge.glow,
+#burninClock.glow {
+    position: relative;
+    transition: box-shadow 0.3s ease-in-out;
+}
+
+@keyframes glowPulse {
+    0%   { box-shadow: 0 0 10px 2px rgba(0,255,102,0.4); }
+    50%  { box-shadow: 0 0 20px 6px rgba(0,255,102,0.8); }
+    100% { box-shadow: 0 0 10px 2px rgba(0,255,102,0.4); }
+}
+
+#tempGauge.glow,
+#burninClock.glow {
+    animation: glowPulse 1.5s infinite;
+    border-radius: 50%; /* ensure rounded glow for circular gauges */
+}
+
+
+@keyframes pulse {
+    0%   { transform: scale(1); opacity: 0.1; }
+    50%  { transform: scale(1.05); opacity: 0.6; }
+    100% { transform: scale(1); opacity: 0.1; }
+}

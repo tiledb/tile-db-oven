@@ -56,10 +56,10 @@ char mystring[200];
 bool NewCommand = false;
 
 // Temperature related variables
-float target_temperature = 22; // in °C
+float target_temperature = 25; // in °C
 // now compute min_temperature and max_temperature from target temperature
 float min_temperature = target_temperature - 3; // in °C -> Minimum temperature to count as burn-in
-float max_temperature = target_temperature + 5; // in °C -> Overtemperature threshold -> go to idle beyond that point
+float max_temperature = target_temperature + 3; // in °C -> Overtemperature threshold -> go to idle beyond that point
 float temp_calibrated; // temperature translated from ADC counts into °C
 int temperature; // temperature in ADC counts
 int overtemp = 0;
@@ -76,12 +76,15 @@ int voltage_read_enable = 0;
 int read_settings = 0;
 
 // duration of the burn-in run
-int requested_run_hours, requested_run_minutes = 0;
+int requested_run_hours = 0;
+int requested_run_minutes = 0;
 //
 unsigned long startMilTime; // time counters in milliseconds
 int currentAccruedBurninMinutes = 0;
 int pastAccruedBurninMinutes =0;
 bool burninDone = false;
+unsigned long start_mil_running_time; // time counters in milliseconds
+unsigned long running_time = 0;
 
 int address, volts, inByte;
 float fvolts;
@@ -127,7 +130,7 @@ void setup() {
   
   // requested burnin time
   requested_run_hours = 0;
-  requested_run_minutes = 0;
+  requested_run_minutes = 1;
 
   // initialize timer:
   SetupTimer();
@@ -135,6 +138,15 @@ void setup() {
 
   Serial.println("DB Oven: Finished setup, starting in state=Idle");
   Serial.println("Waiting for user commands");
+}
+
+void checkBurninDone(){
+  if (burninDone) {
+    burninDone= false;
+    currentAccruedBurninMinutes=0;
+    pastAccruedBurninMinutes=0;
+    Serial.println("Resetting Burning Done to 0!");
+  }
 }
 
 void loop() {
@@ -214,29 +226,57 @@ void loop() {
         */
 
         case 0: // set enable_run and restart state machine
-          voltage_read_enable = parameter;
-          if(parameter==0) {
-              enable_run = 0;
-              state = 0;
-              Serial.println("Disabling run and going idle!");
+          if(burninDone){
+            Serial.println("BurninDone=1, you can reset this by setting times or temperatures ;)");
+          } else {
+            voltage_read_enable = parameter;
+            if(parameter==0) {
+                enable_run = 0;
+                state = 0;
+                Serial.println("Disabling run and going idle!");
+              }
+            else { enable_run = 1; };
+            state = 0;
             }
-          else { enable_run = 1; };
-          state = 0;
           break;
 
         case 1: // min_temperature
+          checkBurninDone();
           min_temperature = parameter;
+          if (min_temperature> max_temperature) {
+            max_temperature=min_temperature+6;
+          }
+          target_temperature = (max_temperature + min_temperature)/2 ; // in °C -> Minimum temperature to count as burn-in
+
           Serial.print("Setting minimum burn-in temperature to: ");
           Serial.print(min_temperature);
           Serial.println(" °C");
-          break;
-
-        case 2: // max_temperature
-          max_temperature = parameter;
           Serial.print("Setting oven maximum temperature to: ");
           Serial.print(max_temperature);
           Serial.println(" °C");
+          Serial.print("Setting oven target temperature temperature to: ");
+          Serial.print(target_temperature);
+          Serial.println(" °C");          
           break;
+
+        case 2: // max_temperature
+          checkBurninDone();
+          max_temperature = parameter;
+          if (min_temperature> max_temperature) {
+            min_temperature=max_temperature-6;
+          }
+          target_temperature = (max_temperature + min_temperature)/2 ; // in °C -> Minimum temperature to count as burn-in          
+          Serial.print("Setting minimum burn-in temperature to: ");
+          Serial.print(min_temperature);
+          Serial.println(" °C");
+          Serial.print("Setting oven maximum temperature to: ");
+          Serial.print(max_temperature);
+          Serial.println(" °C");
+          Serial.print("Setting oven target temperature temperature to: ");
+          Serial.print(target_temperature);
+          Serial.println(" °C");          
+          break;
+
 
         case 3: // enable_heater
           enable_heater = parameter;
@@ -290,12 +330,14 @@ void loop() {
           break;
 
         case 9: // run_hours
+          checkBurninDone();
           requested_run_hours = parameter;
           Serial.print(" Setting number of requested burn-in hours to : ");
           Serial.println(requested_run_hours);
           break;
 
         case 10: // run_minutes
+          checkBurninDone();
           requested_run_minutes = parameter;
           Serial.print(" Setting number of requested burn-in minutes to : ");
           Serial.println(requested_run_minutes);
@@ -306,7 +348,21 @@ void loop() {
           break;
 
         case 12: // reserved
-          Serial.println("Piro");
+          checkBurninDone();
+          target_temperature = parameter;
+          if ((target_temperature < min_temperature+1) || (target_temperature > max_temperature-1)) {
+            min_temperature=target_temperature-3;
+            max_temperature=target_temperature+3;
+          }
+          Serial.print("Setting minimum burn-in temperature to: ");
+          Serial.print(min_temperature);
+          Serial.println(" °C");
+          Serial.print("Setting oven maximum temperature to: ");
+          Serial.print(max_temperature);
+          Serial.println(" °C");
+          Serial.print("Setting oven target temperature temperature to: ");
+          Serial.print(target_temperature);
+          Serial.println(" °C");          
           break;
 
         case 13: // voltage_read_enable
@@ -341,9 +397,12 @@ void loop() {
 
     temperature = analogRead(Temp);
     temp_calibrated = (((temperature * (4980.0 / 1023)) - 2365.0) / ((1399.0 - 2365.0) / (90.0 - 20.0))) + 20.0 - temp_offset;
-    
+
+  
+
     switch (state) {
       case 0: // idle
+        
         // blinking LEDs while in idle state
         if (blinky == 0) {
           blinky = 1;
@@ -359,13 +418,17 @@ void loop() {
         enable_lv_power = 0;
         startMilTime = millis();
 
-        if ( (!burninDone) && (enable_run == 1) ) {Serial.println("Switching to state=warm-up");state = 1;}
+        if ( (!burninDone) && (enable_run == 1) ) {
+          Serial.println("Switching to state=warm-up");
+          state = 1;
+          running_time=0;
+          start_mil_running_time= millis();}
         if (debug_mode == 1) state = 4;
 
         break;
 
       case 1: // warmup
-
+        running_time = (millis() - start_mil_running_time) / 1000.0;
         enable_heater = 1;
         enable_lv_power = 0;
 
@@ -386,15 +449,19 @@ void loop() {
         if (debug_mode == 1) state = 4;
         break;
 
-      case 2: // burn-in 
+      case 2: // burn-in
+       
+        running_time = (millis() - start_mil_running_time) / 1000.0;
+
         enable_heater = 1;
         enable_lv_power =  1;
         
         // Go to State = Idle if the accrued total burnin time has reached the required burnin duration
         currentAccruedBurninMinutes = pastAccruedBurninMinutes + millisec2minutes(millis()-startMilTime);
-        if (currentAccruedBurninMinutes > requested_run_minutes + 60* requested_run_hours ) {
+        if (currentAccruedBurninMinutes > (requested_run_minutes + 60* requested_run_hours)-1 ) {
             state = 0 ;
             burninDone = true;
+            enable_run = 0;
             Serial.print  ("pastAccruedBurninMinutes = ");
             Serial.println(pastAccruedBurninMinutes);
             Serial.print  ("currentAccruedBurninMinutes = ");
@@ -453,6 +520,9 @@ void loop() {
         break;
 
       case 3: // cooldown
+        
+        running_time = (millis() - start_mil_running_time) / 1000.0;
+
         enable_heater = 0;
         enable_lv_power = 0;
         // hours = 0;
@@ -575,54 +645,98 @@ void loop() {
 
     // Read run settings:
     if (read_settings > 0) {
-      Serial.println("");
-      Serial.println("DB Oven current settings and status:");
-      Serial.print  ("   Temperature settings (min/max) ");
-      Serial.print  (min_temperature);
-      Serial.print  (" / ");
-      Serial.print  (max_temperature);
-      Serial.println(" °C");
+      if (read_settings == 1) {
+        Serial.println("");
+        Serial.println("DB Oven current settings and status:");
+        Serial.print  ("   Temperature settings (min/max) ");
+        Serial.print  (min_temperature);
+        Serial.print  (" / ");
+        Serial.print  (max_temperature);
+        Serial.println(" °C");
 
-      Serial.print  ("   Target temperature °C ");
-      Serial.println(target_temperature);  
+        Serial.print  ("   Target temperature °C ");
+        Serial.println(target_temperature);  
+        
+        Serial.print  ("   Current temperature Oven °C ");
+        Serial.println(temp_calibrated);  
+        
+        Serial.print  ("   Requested run time settings (hours : mins : total in mns) ");
+        Serial.print  (requested_run_hours);
+        Serial.print  (" : ");
+        Serial.print  (requested_run_minutes);
+        Serial.print  (" : ");
+        Serial.println(requested_run_minutes + 60* requested_run_hours);
+        
+        Serial.print("Running Time: ");
+        Serial.println(running_time);
+        
+        Serial.print  ("   Accrued Burn-in time since start of burn-in (minutes): ");
+        Serial.println(currentAccruedBurninMinutes); // + millisec2minutes(millis()-startMilTime) ); // removed by piro...
       
-      Serial.print  ("   Current temperature Oven °C ");
-      Serial.println(temp_calibrated);  
+        Serial.print  ("   In debug mode: ");
+        Serial.println(debug_mode);
+
+        Serial.print  ("   State (0-idle, 1-warmup, 2-burnin. 3-cooldown, 4-debug): ");
+        Serial.println(state);
+
+        Serial.print  ("   enable_run = ");
+        Serial.println(enable_run);
+
+        Serial.print  ("   enable_heater = ");
+        Serial.println(enable_heater);
+
+        Serial.print  ("   DB LV Supply 0 enabled: ");
+        Serial.println(enable_db_lv_supply[0]);
+        Serial.print  ("   DB LV Supply 1 enabled: ");
+        Serial.println(enable_db_lv_supply[1]);
+        Serial.print  ("   DB LV Supply 2 enabled: ");
+        Serial.println(enable_db_lv_supply[2]);
+        Serial.print  ("   DB LV Supply 3 enabled: ");
+        Serial.println(enable_db_lv_supply[3]);
+
+        Serial.print  ("   Burnin done: ");
+        Serial.println(burninDone);
+      } else if (read_settings==2)
+      {
+        Serial.print("Tmin=");
+        Serial.print(min_temperature);
+        Serial.print(" | Tmax=");
+        Serial.print(max_temperature);
+        Serial.print(" | Ttarget=");
+        Serial.print(target_temperature);
+        Serial.print(" | Toven=");
+        Serial.print(temp_calibrated);
+        Serial.print(" | RunHours=");
+        Serial.print(requested_run_hours);
+        Serial.print(" | RunMins=");
+        Serial.print(requested_run_minutes);
+        Serial.print(" | RunTotalMins=");
+        Serial.print(requested_run_minutes + 60 * requested_run_hours);
+        Serial.print(" | BurninAccruedMins=");
+        Serial.print(currentAccruedBurninMinutes); // + millisec2minutes(millis()-startMilTime) );
+        Serial.print(" | RunningTime=");
+        Serial.print(running_time);
+        Serial.print(" | Debug=");
+        Serial.print(debug_mode);
+        Serial.print(" | State=");
+        Serial.print(state);
+        Serial.print(" | EnableRun=");
+        Serial.print(enable_run);
+        Serial.print(" | EnableHeater=");
+        Serial.print(enable_heater);
+        Serial.print(" | LV0=");
+        Serial.print(enable_db_lv_supply[0]);
+        Serial.print(" | LV1=");
+        Serial.print(enable_db_lv_supply[1]);
+        Serial.print(" | LV2=");
+        Serial.print(enable_db_lv_supply[2]);
+        Serial.print(" | LV3=");
+        Serial.print(enable_db_lv_supply[3]);
+        Serial.print(" | BurninDone=");
+        Serial.println(burninDone);
+      }
       
-      Serial.print  ("   Requested run time settings (hours : mins : total in mns) ");
-      Serial.print  (requested_run_hours);
-      Serial.print  (" : ");
-      Serial.print  (requested_run_minutes);
-      Serial.print  (" : ");
-      Serial.println(requested_run_minutes + 60* requested_run_hours);
-      
-      Serial.print  ("   Accrued Burn-in time since start of burn-in (minutes): ");
-      Serial.println(pastAccruedBurninMinutes + millisec2minutes(millis()-startMilTime) );
-    
-      Serial.print  ("   In debug mode: ");
-      Serial.println(debug_mode);
 
-      Serial.print  ("   State (0-idle, 1-warmup, 2-burnin. 3-cooldown, 4-debug): ");
-      Serial.println(state);
-
-      Serial.print  ("   enable_run = ");
-      Serial.println(enable_run);
-
-      Serial.print  ("   enable_heater = ");
-      Serial.println(enable_heater);
-
-      Serial.print  ("   DB LV Supply 0 enabled: ");
-      Serial.println(enable_db_lv_supply[0]);
-      Serial.print  ("   DB LV Supply 1 enabled: ");
-      Serial.println(enable_db_lv_supply[1]);
-      Serial.print  ("   DB LV Supply 2 enabled: ");
-      Serial.println(enable_db_lv_supply[2]);
-      Serial.print  ("   DB LV Supply 3 enabled: ");
-      Serial.println(enable_db_lv_supply[3]);
-
-      Serial.print  ("   Burnin done: ");
-      Serial.println(burninDone);
-    
       read_settings = 0;
     }
 
@@ -668,10 +782,15 @@ int * ReadVoltages() {
 }
 
 // convert milliseconds into minutes
+unsigned long millisec2seconds(unsigned long milliseconds) {
+  return (milliseconds/1000.);
+}
+
 int millisec2minutes(unsigned long milliseconds) {
   milliseconds/1000.;
   return (milliseconds/1000.)/60.;
 }
+
 
 void SetLed(int channel, int value) {
   // Set LED
