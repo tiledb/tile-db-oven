@@ -541,12 +541,17 @@ void loop() {
             Serial.println("================================================================================");
         }
 
-        // Go to State = Idle if overtemperature condition
+        // Go to State = CoolDown if overtemperature condition
         if (temp_calibrated > max_temperature) { // Max temperature exceeded. Disable run and set overtemp flag
-          enable_run = 0;
+          enable_run = 1;
           overtemp = 1;
           state = 3;
           previous_state = 2;
+          enable_lv_power = 0;
+          // keep track of how much burnin was done so far
+          pastAccruedBurninSeconds = pastAccruedBurninSeconds + millisec2seconds(millis()-startMilTime);
+          pastAccruedBurninMinutes = pastAccruedBurninSeconds /60.0;
+
           Serial.print("Overtemperarure: ");
           Serial.print(temp_calibrated); Serial.println(" °C");
           Serial.println("Reached overtemperature, going idle !");
@@ -564,8 +569,59 @@ void loop() {
           Serial.println("Burnin not completed, but going to Idle - Restart cycle (0,1) when overtemperature condition is resolved!");
         }
 
+
+        // Keep temperature 
+        if (temp_calibrated > (max_temperature + target_temperature)/2) { // "-1" to avoid oscillations when Toven is just at threshold which give quick on/off/on..
+          state = 2;
+          previous_state =2;
+          enable_run = 1;
+          enable_heater = 0;
+          enable_lv_power = 1;
+          overtemp = 0;
+          
+          Serial.print("Undertemperature: ");
+          Serial.print(temp_calibrated); Serial.println(" °C");
+          Serial.println("... going back to State=\"Warmup\" !");
+          
+          // keep track of how much burnin was done so far
+          pastAccruedBurninSeconds = pastAccruedBurninSeconds + millisec2seconds(millis()-startMilTime);
+          pastAccruedBurninMinutes = pastAccruedBurninSeconds /60.0;
+
+          Serial.print  ("total accrued burnin minutes = ");
+          Serial.println(pastAccruedBurninMinutes);
+          
+          Serial.print  ("total required burnin minutes = ");
+          Serial.println(requested_run_minutes + 60* requested_run_hours);
+ 
+        }
+
+        if (temp_calibrated < (min_temperature + target_temperature)/2) { // "-1" to avoid oscillations when Toven is just at threshold which give quick on/off/on..
+          state = 2;
+          previous_state =2;
+          enable_run = 1;
+          enable_heater = 1;
+          enable_lv_power = 1;
+          overtemp = 0;
+          
+          Serial.print("Undertemperature: ");
+          Serial.print(temp_calibrated); Serial.println(" °C");
+          Serial.println("... going back to State=\"Warmup\" !");
+          
+          // keep track of how much burnin was done so far
+          pastAccruedBurninSeconds = pastAccruedBurninSeconds + millisec2seconds(millis()-startMilTime);
+          pastAccruedBurninMinutes = pastAccruedBurninSeconds /60.0;
+
+          Serial.print  ("total accrued burnin minutes = ");
+          Serial.println(pastAccruedBurninMinutes);
+          
+          Serial.print  ("total required burnin minutes = ");
+          Serial.println(requested_run_minutes + 60* requested_run_hours);
+ 
+        }
+
+
         // Go to State ="Warmup" if T<Tmin-1 
-        if (temp_calibrated < min_temperature-1) { // "-1" to avoid oscillations when Toven is just at threshold which give quick on/off/on..
+        if (temp_calibrated < min_temperature) { // "-1" to avoid oscillations when Toven is just at threshold which give quick on/off/on..
           state = 1;
           previous_state =2;
           enable_run = 1;
@@ -595,9 +651,10 @@ void loop() {
       case 3: // cooldown
         
         running_time = (millis() - start_mil_running_time) / 1000.0;
-
+        enable_run = 1;
         enable_heater = 0;
         enable_lv_power = 0;
+        overtemp = 1;
         // hours = 0;
         // minutes = 0;
 
