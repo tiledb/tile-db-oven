@@ -27,6 +27,12 @@
     15:   debug_mode_enable
 */
 
+
+
+
+
+
+
 const int BoardLED = 13;
 const int Mux[] = { 50, 52, 53 };
 const int Led[] = { 40, 41, 42, 43, 44, 45 };
@@ -48,12 +54,35 @@ char *ptr;
 int i, j, k, n;
 
 
+// Temperature smoothing buffer
+#define TEMP_BUFFER_SIZE 10   // number of samples in moving average
 
-// Configuration registers;
-int command, parameter;
-String inputString = "";         // A String to hold incoming serial data entered by user on Serial Monitor
-char mystring[200];
-bool NewCommand = false;
+int temp_buffer[TEMP_BUFFER_SIZE];
+int temp_buffer_index = 0;
+bool temp_buffer_filled = false;
+
+float getAveragedTemperatureADC(int new_sample)
+{
+  temp_buffer[temp_buffer_index] = new_sample;
+  temp_buffer_index++;
+
+  if (temp_buffer_index >= TEMP_BUFFER_SIZE) {
+    temp_buffer_index = 0;
+    temp_buffer_filled = true;
+  }
+
+  int count = temp_buffer_filled ? TEMP_BUFFER_SIZE : temp_buffer_index;
+
+  long sum = 0;
+  for (int i = 0; i < count; i++) {
+    sum += temp_buffer[i];
+  }
+
+  return (float)sum / count;
+}
+unsigned long lastTempSample = 0;
+const unsigned long tempSampleInterval = 200; // milliseconds
+
 
 // Temperature related variables
 float target_temperature = 25; // in °C
@@ -64,6 +93,25 @@ float temp_calibrated; // temperature translated from ADC counts into °C
 int temperature; // temperature in ADC counts
 int overtemp = 0;
 int temp_read_enable;
+
+
+void updateTemperature()
+{
+  temperature = getAveragedTemperatureADC(analogRead(Temp));
+
+  temp_calibrated =
+    (((temperature * (4980.0 / 1023)) - 2365.0) /
+    ((1399.0 - 2365.0) / (90.0 - 20.0))) + 20.0 - temp_offset;
+}
+
+
+// Configuration registers;
+int command, parameter;
+String inputString = "";         // A String to hold incoming serial data entered by user on Serial Monitor
+char mystring[200];
+bool NewCommand = false;
+
+
 
 
 int blinky = 0;
@@ -93,6 +141,7 @@ float fvolts;
 
 
 int state = 0;  // 0-idle, 1-warmup, 2-burnin. 3-cooldown, 4-debug
+int previous_state = 0;  // 0-idle, 1-warmup, 2-burnin. 3-cooldown, 4-debug
 
 char c;
 
@@ -154,6 +203,21 @@ void checkBurninDone(){
 }
 
 void loop() {
+
+  if (millis() - lastTempSample >= tempSampleInterval)
+  {
+    lastTempSample = millis();
+    updateTemperature();
+  }
+
+  // // Oven control state machine
+
+  // temperature = getAveragedTemperatureADC(analogRead(Temp));
+  // temp_calibrated = (((temperature * (4980.0 / 1023)) - 2365.0) / ((1399.0 - 2365.0) / (90.0 - 20.0))) + 20.0 - temp_offset;
+
+
+
+
   if (TCNT5 < 12000) {
 
     TCNT5 = 63974; // 0.1 second interval
@@ -397,12 +461,7 @@ void loop() {
     }
 
 
-    // Oven control state machine
-
-    temperature = analogRead(Temp);
-    temp_calibrated = (((temperature * (4980.0 / 1023)) - 2365.0) / ((1399.0 - 2365.0) / (90.0 - 20.0))) + 20.0 - temp_offset;
-
-  
+ 
 
     switch (state) {
       case 0: // idle
@@ -425,6 +484,7 @@ void loop() {
         if ( (!burninDone) && (enable_run == 1) ) {
           Serial.println("Switching to state=warm-up");
           state = 1;
+          previous_state = 0;
           running_time=0;
           start_mil_running_time= millis();}
         if (debug_mode == 1) state = 4;
@@ -438,8 +498,9 @@ void loop() {
 
         // Use calibrated temperature (raw temperature readings are an inverse scale)
         // switch from State=warm-up to State=Burnin when temperature is high enough
-        if (temp_calibrated > min_temperature) {
+        if (temp_calibrated > target_temperature) {
           state = 2;
+          previous_state =1;
           startMilTime = millis(); // keep track of the time when we enter burnin state
           Serial.print("Current temperature (°C) is ");
           Serial.print(temp_calibrated);
@@ -467,6 +528,7 @@ void loop() {
         
         if (currentAccruedBurninMinutes > (requested_run_minutes + 60* requested_run_hours)-1 ) {
             state = 0 ;
+            previous_state =2;
             burninDone = true;
             enable_run = 0;
             Serial.print  ("pastAccruedBurninMinutes = ");
@@ -483,7 +545,8 @@ void loop() {
         if (temp_calibrated > max_temperature) { // Max temperature exceeded. Disable run and set overtemp flag
           enable_run = 0;
           overtemp = 1;
-          state = 0;
+          state = 3;
+          previous_state = 2;
           Serial.print("Overtemperarure: ");
           Serial.print(temp_calibrated); Serial.println(" °C");
           Serial.println("Reached overtemperature, going idle !");
@@ -504,6 +567,7 @@ void loop() {
         // Go to State ="Warmup" if T<Tmin-1 
         if (temp_calibrated < min_temperature-1) { // "-1" to avoid oscillations when Toven is just at threshold which give quick on/off/on..
           state = 1;
+          previous_state =2;
           enable_run = 1;
           enable_heater = 1;
           enable_lv_power = 0;
@@ -537,7 +601,10 @@ void loop() {
         // hours = 0;
         // minutes = 0;
 
-        if (temp_calibrated <= min_temperature) state = 0; // Temperature below min burn-in temperature. Go to idle state but mantain registers
+        if (temp_calibrated < target_temperature) {
+          state = 2; // Temperature below min burn-in temperature. Go to idle state but mantain registers
+          previous_state =3;
+        }
         if (debug_mode == 1) state = 4;
 
         break;
