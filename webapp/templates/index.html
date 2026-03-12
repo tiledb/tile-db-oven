@@ -5,11 +5,17 @@
   <meta charset="UTF-8">
   <title>DB Oven Controller</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+  <!-- <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> -->
+  <script src="{{ url_for('static', filename='echarts.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='chart.js') }}"></script>
+  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.25.2/cytoscape.min.js"></script> -->
+  <script src="{{ url_for('static', filename='cytoscape.min.js') }}"></script>
+
 </head>
 
 <body>
-  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <script>
     window.APP_PREFIX = "{{ prefix }}";
@@ -53,7 +59,7 @@
 
       <!-- Temperature Gauge -->
       <div class="status-row">
-        <div id="tempGauge" style="width:250px;height:250px;"></div>
+        <div id="tempGauge" style="width:200px;height:200px;"></div>
 
         <div class="gauge-labels">
           <div class="gauge-row">
@@ -80,38 +86,47 @@
 
 
         <!-- Burn-in Clock -->
-        <div id="burninClock" style="width: 250px; height: 250px; display:inline-block;"></div>
+        <div id="burninClock" style="width: 200px; height: 200px; display:inline-block;"></div>
 
         <div class="clock-labels">
 
           <div class="gauge-row">
             <span class="status-label">RunTotal:</span>
-            <span id="statusRunTotalMins">0</span> min
+            <span id="statusRunTotalMins">00:00:00</span>
           </div>
 
           <div class="gauge-row">
             <span class="status-label">Accrued:</span>
-            <span id="statusBurninAccruedMins">0</span> min
+            <span id="statusBurninAccruedSecs">00:00:00</span>
           </div>
 
           <div class="gauge-row">
             <span class="status-label">Running:</span>
-            <span id="statusRunningTime">0</span> sec
+            <span id="statusRunningTime">00:00:00</span>
           </div>
 
         </div>
       </div>
 
-      <!-- LED indicators -->
-      <div class="status-row leds">
-        <div class="led-item">Heater <span class="led red" id="ledHeater"></span></div>
-        <div class="led-item">Run <span class="led red" id="ledRun"></span></div>
-        <div class="led-item">BurninDone <span class="led red" id="ledBurninDone"></span></div>
-        <div class="led-item">LV0 <span class="led red" id="ledLV0"></span></div>
-        <div class="led-item">LV1 <span class="led red" id="ledLV1"></span></div>
-        <div class="led-item">LV2 <span class="led red" id="ledLV2"></span></div>
-        <div class="led-item">LV3 <span class="led red" id="ledLV3"></span></div>
+
+      <div id="ovenStateGraph-container">
+        <div id="ovenStateGraph" style="width: 400px; height: 100px; border: 1px solid #222; border-radius:10px;"></div>
+
+        <!-- LED indicators -->
+        <div class="status-row leds">
+          <div class="led-item">Heater <span class="led red" id="ledHeater"></span></div>
+          <div class="led-item">Run <span class="led red" id="ledRun"></span></div>
+          <div class="led-item">BurninDone <span class="led red" id="ledBurninDone"></span></div>
+          <div class="led-item">LV0 <span class="led red" id="ledLV0"></span></div>
+          <div class="led-item">LV1 <span class="led red" id="ledLV1"></span></div>
+          <div class="led-item">LV2 <span class="led red" id="ledLV2"></span></div>
+          <div class="led-item">LV3 <span class="led red" id="ledLV3"></span></div>
+          <div class="led-item">LVPower <span class="led red" id="ledLVPower"></span></div>
+        </div>
       </div>
+
+
+
     </div>
 
     <div class="quick-commands">

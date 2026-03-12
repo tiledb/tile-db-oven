@@ -97,30 +97,76 @@ h1, h2 {
 .btn-set.btn-glow:hover { box-shadow: 0 0 15px #00f, 0 0 30px #00f inset; }
 
 /* ------------------------- LEDs ------------------------- */
+/* ------------------------- LED Base ------------------------- */
+
 .led {
   width: 18px;
   height: 18px;
   border-radius: 50%;
   display: inline-block;
   margin-right: 5px;
-  background-color: red;
-  box-shadow: 0 0 8px #f00;
+
+  /* OFF state */
+  background: #600;
+  box-shadow: 0 0 6px #900 inset;
+  transition: all 0.2s ease;
 }
 
-.led.green {
-  background-color: #0f0;
-  box-shadow: 0 0 10px #0f0, 0 0 20px #0f0 inset;
+/* ------------------------- ON State ------------------------- */
+
+.led.on {
+  background: #00ff66;
+
+  box-shadow:
+      0 0 8px #00ff66,
+      0 0 16px #00ff66,
+      0 0 30px rgba(0,255,100,0.7);
+
+  animation: ledPulse 1.2s infinite;
 }
+
+/* ------------------------- Pulse Animation ------------------------- */
+
+@keyframes ledPulse {
+
+  0% {
+    transform: scale(1);
+    box-shadow:
+        0 0 8px #00ff66,
+        0 0 16px #00ff66,
+        0 0 30px rgba(0,255,100,0.7);
+  }
+
+  50% {
+    transform: scale(1.15);
+    box-shadow:
+        0 0 14px #00ff66,
+        0 0 28px #00ff66,
+        0 0 45px rgba(0,255,100,0.9);
+  }
+
+  100% {
+    transform: scale(1);
+    box-shadow:
+        0 0 8px #00ff66,
+        0 0 16px #00ff66,
+        0 0 30px rgba(0,255,100,0.7);
+  }
+
+}
+
+/* ------------------------- Blink Mode ------------------------- */
 
 .led.blink {
   animation: ledBlink 1s infinite;
 }
 
 @keyframes ledBlink {
-  50% { opacity: 0; }
+  50% { opacity: 0.15; }
 }
 
 /* ------------------------- Console ------------------------- */
+
 .console-box {
   height: 320px;
   overflow-y: auto;
@@ -335,22 +381,7 @@ gap:10px;
 font-size:16px;
 }
 
-.led{
-width:16px;
-height:16px;
-border-radius:50%;
-background:#500;
-box-shadow:0 0 4px #000 inset;
-}
 
-.led.green{
-background:#00ff55;
-box-shadow:0 0 10px #00ff55;
-}
-
-.led.red{
-background:#600;
-}
 
 .gauge-labels{
 display:flex;
@@ -414,4 +445,31 @@ color:#ddd;
     0%   { transform: scale(1); opacity: 0.1; }
     50%  { transform: scale(1.05); opacity: 0.6; }
     100% { transform: scale(1); opacity: 0.1; }
+}
+
+
+#ovenStateGraph.glow {
+    animation: graphPulse 1.2s infinite;
+}
+
+@keyframes graphPulse {
+    0%   { box-shadow: 0 0 6px #00ff66; }
+    50%  { box-shadow: 0 0 20px #00ff66; }
+    100% { box-shadow: 0 0 6px #00ff66; }
+}
+
+#ovenStateGraph-container {
+    display: flex;
+    flex-direction: column; /* stack graph + LEDs */
+    align-items: center;    /* horizontal centering */
+    justify-content: center; /* vertical centering if needed */
+    gap: 10px; /* spacing between graph and LED row */
+    margin: 20px auto; /* center container horizontally */
+}
+
+.status-row.leds {
+    display: flex;
+    justify-content: center; /* center the row */
+    flex-wrap: wrap; /* wrap to next line if needed */
+    gap: 15px; /* spacing between LED items */
 }

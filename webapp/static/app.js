@@ -1,3 +1,121 @@
+
+// ---------------------- Cytoscape Oven State Graph ----------------------
+const cy = cytoscape({
+    container: document.getElementById('ovenStateGraph'),
+    elements: [
+        // nodes
+        { data: { id: 'Idle', label: 'Idle' }, position: { x: 50, y: 75 } },
+        { data: { id: 'WarmUp', label: 'Warm-up' }, position: { x: 100, y: 25 } },
+        { data: { id: 'BurnIn', label: 'Burn-in' }, position: { x: 300, y: 25 } },
+        { data: { id: 'CoolDown', label: 'Cool-down' }, position: { x: 350, y: 75 } },
+        { data: { id: 'Finished', label: 'Finished' }, position: { x: 200, y: 75 } },
+
+        // edges
+        { data: { id: 'e1', source: 'Idle', target: 'WarmUp' } },
+        { data: { id: 'e2', source: 'Idle', target: 'BurnIn' } },
+        { data: { id: 'e3', source: 'WarmUp', target: 'BurnIn' } },
+        { data: { id: 'e4', source: 'BurnIn', target: 'WarmUp' } },
+        { data: { id: 'e5', source: 'BurnIn', target: 'CoolDown' } },
+        { data: { id: 'e6', source: 'BurnIn', target: 'Finished' } },
+        { data: { id: 'e7', source: 'CoolDown', target: 'Idle' } }
+    ],
+
+    style: [
+        {
+            selector: 'node',
+            style: {
+                'label': 'data(label)',
+                'text-valign': 'center',
+                'color': '#0f0',
+                'background-color': '#600',
+                'width': 40,
+                'height': 40,
+                'font-size': 14,
+                'text-outline-width': 2,
+                'text-outline-color': '#0f3f6b'
+            }
+        },
+        {
+            selector: 'edge',
+            style: {
+                'width': 3,
+                'line-color': '#0e0ae7',
+                'target-arrow-color': '#888',
+                'target-arrow-shape': 'triangle',
+                'curve-style': 'bezier'
+            }
+        },
+        {
+            selector: '.current',
+            style: {
+            'background-color': '#04d361',
+            'width': 50,
+            'height': 50,
+            'text-outline-color': '#050374',
+            'transition-property': 'background-color, width, height',
+            'transition-duration': '0.8s',
+            'font-size': 16,
+            'font-weight': 'bold'
+            }
+        },
+        {
+            selector: '.completed',
+            style: {
+                'background-color': '#04d361',
+                'text-outline-color': '#050374'
+            }
+        },
+        {
+            selector: '.previous',
+            style: {
+                'background-color': '#05421c', // orange
+                'width': 45,
+                'height': 45,
+                'text-outline-color': '#050374',
+                'font-size': 16,
+                'font-weight': 'bold'
+            }
+        },
+        {
+            selector: '.highlight',
+            style: {
+                'line-color': '#00ff66',         // bright green
+                'width': 5,                       // thicker line
+                'target-arrow-color': '#00ff66',  // arrow color
+                'transition-property': 'line-color, width',
+                'transition-duration': '0.5s'
+            }
+        }
+
+    ],
+
+    layout: {
+        name: 'preset',
+        fit: false // important: do not auto-fit, let positions stick
+    },
+    // layout: {
+    //     name: 'grid',
+    //     rows: 1,
+    //     cols: 4,
+    //     padding: 20
+    // }
+});
+
+// map oven state string to node id
+const stateMap = {
+    '0': 'Idle',
+    '1': 'WarmUp',
+    '2': 'BurnIn',
+    '3': 'CoolDown',
+    '4': 'Finished',
+};
+
+// Keep track of completed states for history
+let historyStates = [];
+let previousState = null;
+let currentState = null;
+
+
 // --------------------------------------------------
 // TEMPERATURE GAUGE
 // --------------------------------------------------
@@ -46,7 +164,7 @@ const gaugeOption = {
             },
             
             axisLabel:{
-                fontSize:18,
+                fontSize:14,
                 color:"#00ff66"
             },
 
@@ -55,7 +173,7 @@ const gaugeOption = {
             },
 
             detail:{
-                fontSize:28,
+                fontSize:20,
                 offsetCenter:[0,"60%"],
                 formatter:"{value} °C"
             },
@@ -99,18 +217,16 @@ const burninOption = {
 
 burninChart.setOption(burninOption);
 
+function setLED(id, value){
 
-function setLED(id, state){
-    const led = document.getElementById(id);
-    if(!led) return;
+    const el = document.getElementById(id);
 
-    if(Number(state) === 1){
-        led.classList.add("green");
-        led.classList.remove("red");
+    if(value === "1"){
+        el.classList.add("on");
     }else{
-        led.classList.remove("green");
-        led.classList.add("red");
+        el.classList.remove("on");
     }
+
 }
 
 let serConnected = false;
@@ -266,23 +382,39 @@ const updateConnectionStatus = async () => {
         const res = await fetch(`${window.APP_PREFIX}/connection_status`);
         const data = await res.json();
         if (data.status === "connected") {
-            connectionLed.classList.add("green");
+            connectionLed.classList.add("on");
             connectionLed.classList.remove("red");
             connectLabel.textContent = "Device Connected";
             serConnected = true;
         } else {
-            connectionLed.classList.remove("green");
+            connectionLed.classList.remove("on");
             connectionLed.classList.add("red");
             connectLabel.textContent = "Waiting for device";
             serConnected = false;
         }
     } catch (e) {
-        connectionLed.classList.remove("green");
+        connectionLed.classList.remove("on");
         connectionLed.classList.add("red");
         connectLabel.textContent = "Backend unreachable";
         serConnected = false;
     }
 };
+
+function formatSeconds(sec){
+
+    sec = Number(sec) || 0;
+
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+
+    return [
+        h.toString().padStart(2,'0'),
+        m.toString().padStart(2,'0'),
+        s.toString().padStart(2,'0')
+    ].join(':');
+
+}
 
 // --------------------------------------------------
 // SERIAL CONSOLE POLLING
@@ -290,7 +422,7 @@ const updateConnectionStatus = async () => {
 setInterval(async () => {
     await updateConnectionStatus();
     if (!serConnected) {
-        receiveLed.classList.remove("green", "blink");
+        receiveLed.classList.remove("green", "on");
         return;
     }
     try {
@@ -300,13 +432,13 @@ setInterval(async () => {
             const newLines = data.slice(consoleBuffer.length);
             newLines.forEach(line => appendConsoleLine(line));
             consoleBuffer = data.slice(-500);
-            receiveLed.classList.add("green", "blink");
+            receiveLed.classList.add("green", "on");
         } else {
-            receiveLed.classList.remove("blink");
+            receiveLed.classList.remove("on");
         }
     } catch (e) {
         console.error("Error polling serial:", e);
-        receiveLed.classList.remove("green", "blink");
+        receiveLed.classList.remove("green", "on");
     }
 }, 2000);
 
@@ -374,8 +506,8 @@ setInterval(async () => {
         // Burn-in clock
         // -----------------------------
 
-        const total = Number(s.RunTotalMins || 1);
-        const accrued = Number(s.BurninAccruedMins || 0);
+        const total = 60*Number(s.RunTotalMins || 1);
+        const accrued = Number(s.BurninAccruedSecs || 0);
 
         // Update chart data
         burninChart.setOption({
@@ -385,7 +517,7 @@ setInterval(async () => {
                     { value: Math.max(total-accrued,0), name:'Remaining', itemStyle:{color:'#222'} }
                 ],
                 label: {
-                    formatter: `${Math.round(accrued/total*100)}%`
+                    formatter: `${(accrued/total*100).toFixed(2)}%`
                 }
             }]
         });
@@ -409,13 +541,13 @@ setInterval(async () => {
         // -----------------------------
 
         document.getElementById("statusRunTotalMins").innerText =
-            s.RunTotalMins || 0;
+            formatSeconds(s.RunTotalMins*60) || formatSeconds(0);
 
-        document.getElementById("statusBurninAccruedMins").innerText =
-            s.BurninAccruedMins || 0;
+        document.getElementById("statusBurninAccruedSecs").innerText =
+            formatSeconds(s.BurninAccruedSecs) || formatSeconds(0);
 
         document.getElementById("statusRunningTime").innerText =
-            s.RunningTime || 0;
+            formatSeconds(s.RunningTime) || formatSeconds(0);
 
         // -----------------------------
         // LEDs
@@ -429,6 +561,62 @@ setInterval(async () => {
         setLED("ledLV1", s.LV1);
         setLED("ledLV2", s.LV2);
         setLED("ledLV3", s.LV3);
+
+        setLED("ledLVPower", s.LVPower);
+
+
+        const stateNode = stateMap[s.State];
+        if (previousState!== stateNode) {
+        // Reset classes first
+            cy.nodes().removeClass('current previous completed');
+            cy.edges().removeClass('highlight');
+        }
+        
+
+
+
+        if (s.BurninDone === "1") {
+            // Burn-in complete: reset to initial state
+            previousState = 'BurnIn';
+            currentState = 'Finished'
+            historyStates = [];
+            cy.getElementById('BurnIn').addClass('previous');
+            cy.getElementById('Finished').addClass('current');
+            // highlight the last edge
+
+            const lastEdge = cy.edges(`[source = "${previousState}"][target = "${currentState}"]`);
+            lastEdge.addClass('highlight');
+
+        } else {
+            // highlight the last edge
+            if(previousState && stateNode) {
+                const lastEdge = cy.edges(`[source = "${previousState}"][target = "${stateNode}"]`);
+                lastEdge.addClass('highlight');
+            }
+            // normal operation
+            if (previousState && previousState !== stateNode) {
+                cy.getElementById(previousState).addClass('previous');
+            }
+
+            if (stateNode) {
+                cy.getElementById(stateNode).addClass('current');
+                // update history
+                if (!historyStates.includes(stateNode) && s.State != "1") {
+                    historyStates.push(stateNode);
+                }
+            }
+
+            // update previousState for next poll
+            previousState = stateNode;
+        }
+
+        const graphEl = document.getElementById('ovenStateGraph');
+
+        if(s.EnableRun === "1" && s.BurninDone === "0") {
+            graphEl.classList.add('glow');
+        } else {
+            graphEl.classList.remove('glow');
+        }
 
     }catch(e){
         console.error("status fetch failed",e);

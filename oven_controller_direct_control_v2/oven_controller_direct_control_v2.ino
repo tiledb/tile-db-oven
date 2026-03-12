@@ -81,7 +81,9 @@ int requested_run_minutes = 0;
 //
 unsigned long startMilTime; // time counters in milliseconds
 int currentAccruedBurninMinutes = 0;
+int currentAccruedBurninSeconds = 0;
 int pastAccruedBurninMinutes =0;
+int pastAccruedBurninSeconds =0;
 bool burninDone = false;
 unsigned long start_mil_running_time; // time counters in milliseconds
 unsigned long running_time = 0;
@@ -145,6 +147,8 @@ void checkBurninDone(){
     burninDone= false;
     currentAccruedBurninMinutes=0;
     pastAccruedBurninMinutes=0;
+    currentAccruedBurninSeconds=0;
+    pastAccruedBurninSeconds=0;
     Serial.println("Resetting Burning Done to 0!");
   }
 }
@@ -457,7 +461,10 @@ void loop() {
         enable_lv_power =  1;
         
         // Go to State = Idle if the accrued total burnin time has reached the required burnin duration
-        currentAccruedBurninMinutes = pastAccruedBurninMinutes + millisec2minutes(millis()-startMilTime);
+        currentAccruedBurninSeconds = pastAccruedBurninSeconds + millisec2seconds(millis()-startMilTime);
+        pastAccruedBurninMinutes = pastAccruedBurninSeconds/60.0;
+        currentAccruedBurninMinutes = currentAccruedBurninSeconds/60.0;
+        
         if (currentAccruedBurninMinutes > (requested_run_minutes + 60* requested_run_hours)-1 ) {
             state = 0 ;
             burninDone = true;
@@ -482,7 +489,8 @@ void loop() {
           Serial.println("Reached overtemperature, going idle !");
           
           // keep track of how much burnin was done so far
-          pastAccruedBurninMinutes = pastAccruedBurninMinutes + millisec2minutes(millis()-startMilTime);
+          pastAccruedBurninSeconds = pastAccruedBurninSeconds + millisec2seconds(millis()-startMilTime);
+          pastAccruedBurninMinutes = pastAccruedBurninSeconds /60.0;
 
           Serial.print  ("total accrued burnin minutes = ");
           Serial.println(pastAccruedBurninMinutes);
@@ -506,7 +514,8 @@ void loop() {
           Serial.println("... going back to State=\"Warmup\" !");
           
           // keep track of how much burnin was done so far
-          pastAccruedBurninMinutes = pastAccruedBurninMinutes + millisec2minutes(millis()-startMilTime);
+          pastAccruedBurninSeconds = pastAccruedBurninSeconds + millisec2seconds(millis()-startMilTime);
+          pastAccruedBurninMinutes = pastAccruedBurninSeconds /60.0;
 
           Serial.print  ("total accrued burnin minutes = ");
           Serial.println(pastAccruedBurninMinutes);
@@ -686,6 +695,8 @@ void loop() {
         Serial.println(enable_heater);
 
         Serial.print  ("   DB LV Supply 0 enabled: ");
+        Serial.println(enable_lv_power);
+        Serial.print  ("   DB LV Supply 0 enabled: ");
         Serial.println(enable_db_lv_supply[0]);
         Serial.print  ("   DB LV Supply 1 enabled: ");
         Serial.println(enable_db_lv_supply[1]);
@@ -714,6 +725,8 @@ void loop() {
         Serial.print(requested_run_minutes + 60 * requested_run_hours);
         Serial.print(" | BurninAccruedMins=");
         Serial.print(currentAccruedBurninMinutes); // + millisec2minutes(millis()-startMilTime) );
+        Serial.print(" | BurninAccruedSecs=");
+        Serial.print(currentAccruedBurninSeconds); // + millisec2minutes(millis()-startMilTime) );
         Serial.print(" | RunningTime=");
         Serial.print(running_time);
         Serial.print(" | Debug=");
@@ -732,6 +745,8 @@ void loop() {
         Serial.print(enable_db_lv_supply[2]);
         Serial.print(" | LV3=");
         Serial.print(enable_db_lv_supply[3]);
+        Serial.print(" | LVPower=");
+        Serial.print(enable_lv_power);
         Serial.print(" | BurninDone=");
         Serial.println(burninDone);
       }
@@ -787,7 +802,6 @@ unsigned long millisec2seconds(unsigned long milliseconds) {
 }
 
 int millisec2minutes(unsigned long milliseconds) {
-  milliseconds/1000.;
   return (milliseconds/1000.)/60.;
 }
 
