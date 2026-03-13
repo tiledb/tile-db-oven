@@ -475,10 +475,11 @@ setInterval(async () => {
     try {
         const res = await fetch(`${window.APP_PREFIX}/serial`);
         const data = await res.json();
-        if (data.length > consoleBuffer.length) {
-            const newLines = data.slice(consoleBuffer.length);
+        const newLines = data.filter(line => !consoleBuffer.includes(line));
+
+        if (newLines.length > 0) {
             newLines.forEach(line => appendConsoleLine(line));
-            consoleBuffer = data.slice(-500);
+            consoleBuffer = [...consoleBuffer, ...newLines].slice(-500);
             receiveLed.classList.add("green", "on");
         } else {
             receiveLed.classList.remove("on");

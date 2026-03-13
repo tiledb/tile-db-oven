@@ -101,7 +101,7 @@ app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_prefix=1)
 
 ser = None
-serial_buffer = deque(maxlen=300)
+serial_buffer = deque(maxlen=2000)
 serial_lock = threading.Lock()
 serial_write_lock = threading.Lock()
 
