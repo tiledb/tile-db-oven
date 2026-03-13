@@ -414,6 +414,27 @@ def restart_service():
     except subprocess.CalledProcessError as e:
         return jsonify({"success": False, "message": str(e)})
 
+
+@app.route("/observer")
+def observer():
+
+    ts = int(datetime.now().timestamp())
+
+    prefix = request.script_root
+
+    rendered = render_template(
+        "observer.html",
+        prefix=prefix,
+        ts=ts
+    )
+
+    response = make_response(rendered)
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+
+    return response
+
 # ---------------------------------------------------
 # CLEANUP
 # ---------------------------------------------------

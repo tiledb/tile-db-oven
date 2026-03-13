@@ -1,0 +1,161 @@
+/* ------------------------- Body & Container ------------------------- */
+body {
+  font-family: monospace;
+  background: linear-gradient(135deg, #0c0c0c, #1a1a1a);
+  color: #0f0;
+  margin: 0;
+  padding: 0;
+}
+
+.container {
+  max-width: 1200px;
+  margin: auto;
+  padding: 25px;
+}
+
+/* ------------------------- Headings ------------------------- */
+h1, h2 {
+  color: #0f0;
+  text-shadow: 0 0 5px #0f0, 0 0 15px #0f0;
+}
+
+/* ------------------------- Boxes ------------------------- */
+.quick-commands,
+.console-box,
+#ovenStatusBox {
+  background: radial-gradient(circle at top left, #1e1e1e, #111);
+  padding: 25px;
+  border-radius: 12px;
+  margin-bottom: 30px;
+  box-shadow: 0 0 20px rgba(0,255,0,0.15);
+}
+
+/* ------------------------- Status Layout ------------------------- */
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: 60px;
+  justify-content: center;
+  margin: 25px 0;
+}
+
+/* ------------------------- Gauge Labels ------------------------- */
+.gauge-labels {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gauge-row {
+  display: flex;
+  gap: 10px;
+  font-size: 18px;
+}
+
+.status-label {
+  font-weight: bold;
+  color: #ccc;
+}
+
+/* ------------------------- LEDs ------------------------- */
+.led {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: inline-block;
+  background: #600;
+  box-shadow: 0 0 6px #900 inset;
+}
+
+.led.on {
+  background: #00ff66;
+  box-shadow:
+      0 0 8px #00ff66,
+      0 0 16px #00ff66,
+      0 0 30px rgba(0,255,100,0.7);
+}
+
+/* LED row */
+.status-row.leds {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 25px;
+  margin-top: 20px;
+}
+
+.led-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+}
+
+/* ------------------------- Console ------------------------- */
+.console-box {
+  height: 350px;
+  overflow-y: auto;
+  background: #000;
+  color: #0f0;
+  padding: 15px;
+  border-radius: 10px;
+  font-family: monospace;
+  box-shadow: 0 0 20px rgba(0,255,0,0.25);
+}
+
+.console-line {
+  opacity: 0;
+  transform: translateY(5px);
+  animation: fadeInSlide 0.3s forwards;
+}
+
+@keyframes fadeInSlide {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ------------------------- Cytoscape Graph ------------------------- */
+#ovenStateGraph-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 35px auto;
+}
+
+/* BIGGER GRAPH */
+#ovenStateGraph {
+  width: 700px;
+  height: 250px;
+  border: 1px solid #222;
+  border-radius: 12px;
+}
+
+/* Glow animation */
+#ovenStateGraph.glow {
+  animation: graphPulse 1.2s infinite;
+}
+
+@keyframes graphPulse {
+  0%   { box-shadow: 0 0 6px #00ff66; }
+  50%  { box-shadow: 0 0 22px #00ff66; }
+  100% { box-shadow: 0 0 6px #00ff66; }
+}
+
+/* ------------------------- Gauges ------------------------- */
+#tempGauge,
+#burninClock {
+  width: 260px;
+  height: 260px;
+}
+
+/* Gauge glow when running */
+#tempGauge.glow,
+#burninClock.glow {
+  animation: glowPulse 1.5s infinite;
+  border-radius: 50%;
+}
+
+@keyframes glowPulse {
+  0%   { box-shadow: 0 0 10px rgba(0,255,102,0.4); }
+  50%  { box-shadow: 0 0 22px rgba(0,255,102,0.9); }
+  100% { box-shadow: 0 0 10px rgba(0,255,102,0.4); }
+}
