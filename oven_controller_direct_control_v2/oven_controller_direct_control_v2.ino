@@ -598,7 +598,7 @@ void loop() {
 
 
         // Keep temperature 
-        else if (temp_calibrated > (max_temperature + target_temperature)/2) { // "-1" to avoid oscillations when Toven is just at threshold which give quick on/off/on..
+        else if ((temp_calibrated > (max_temperature + target_temperature)/2) && (temp_calibrated < max_temperature)) { // "-1" to avoid oscillations when Toven is just at threshold which give quick on/off/on..
           state = 2;
           previous_state =2;
           enable_run = 1;
@@ -610,7 +610,7 @@ void loop() {
  
         }
 
-        else if (temp_calibrated < (min_temperature + target_temperature)/2) { // "-1" to avoid oscillations when Toven is just at threshold which give quick on/off/on..
+        else if ((temp_calibrated < (min_temperature + target_temperature)/2) && (temp_calibrated > min_temperature)) { // "-1" to avoid oscillations when Toven is just at threshold which give quick on/off/on..
           state = 2;
           previous_state =2;
           enable_run = 1;

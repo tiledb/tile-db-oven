@@ -1,354 +1,198 @@
-import machine
-import time
-import onewire
-
+# =========================
+# IMPORTS
+# =========================
+import machine, time, gc, ujson, _thread
 from picographics import PicoGraphics, DISPLAY_PICO_DISPLAY, PEN_P8
-#from pimoroni import RGBLED
-# Reduced colours to save RAM
-display = PicoGraphics(display=DISPLAY_PICO_DISPLAY, pen_type=PEN_P8, rotate=270)
-display.set_backlight(1.0)
-display.set_font("serif") # Lower case included
+import onewire
+import secrets
+from netmgr import NetManager
 
-def colour(R,G,B): # Convert RGB888 to RGB332
-    b = int(B/64)
-    g = int(G/32)
-    r = int(R/64)
-    return b + g * 4 +r * 64
-def display_clear():
+# =========================
+# BOOT BUTTON SAFE MODE
+# =========================
+button_a = machine.Pin(12, machine.Pin.IN, machine.Pin.PULL_UP)
+button_b = machine.Pin(13, machine.Pin.IN, machine.Pin.PULL_UP)
+time.sleep(0.1)
+if button_a.value() == 0 and button_b.value() == 0:
+    display = PicoGraphics(display=DISPLAY_PICO_DISPLAY, pen_type=PEN_P8, rotate=270)
+    display.set_backlight(1.0)
+    display.set_font("serif")
     display.set_pen(0)
     display.clear()
+    display.set_pen(255)
+    display.text(f"SAFE MODE -> A:{button_a.value()} B:{button_b.value()}", 0, 100, 240, 0.4)
     display.update()
+    print("SAFE MODE - boot halted")
+    while True: time.sleep(1)
 
-def display_status_bar(status_pen, status_text):
-    display.set_pen(63)
-    display.rectangle(0,225,120, 15)
-    display.set_pen(status_pen)
-    display.rectangle(121,225,135, 15)
-    display.set_pen(225)
-    display.text(status_text, 0, 232, 135, 0.4)
-    display.update()
-    
+gc.collect()
 
+# =========================
+# CONFIG / SECRETS
+# =========================
+SSID = secrets.WIFI_SSID
+PASSWORD = secrets.WIFI_PASS
+MQTT_BROKER = secrets.MQTT_BROKER
+MQTT_USER = secrets.MQTT_USER
+MQTT_PASS = secrets.MQTT_PASS
+MQTT_PORT = secrets.MQTT_PORT
+MQTT_BASE_TOPIC = secrets.MQTT_BASE_TOPIC
+DISCOVERY_PREFIX = secrets.DISCOVERY_PREFIX
+BOARD_NAME = secrets.BOARD_NAME
+BOARD_ID = secrets.BOARD_ID
 
-# Initialize the display
-black_pen=display.create_pen(0,0,0)
-blue_pen=display.create_pen(0,0,255)
-red_pen=display.create_pen(255,0,0)
-green_pen=display.create_pen(0,255,0)
+# =========================
+# DISPLAY SETUP
+# =========================
+display = PicoGraphics(display=DISPLAY_PICO_DISPLAY, pen_type=PEN_P8, rotate=270)
+display.set_backlight(1.0)
+display.set_font("serif")
+
+black_pen = display.create_pen(0,0,0)
+blue_pen  = display.create_pen(0,0,255)
+red_pen   = display.create_pen(255,0,0)
+green_pen = display.create_pen(0,255,0)
+
+def display_clear(): display.set_pen(0); display.clear(); display.update()
+def display_status_bar(pen,text): display.set_pen(63); display.rectangle(0,225,120,15); display.set_pen(pen); display.rectangle(121,225,135,15); display.set_pen(255); display.text(text,0,232,135,0.4); display.update()
+
 display_clear()
 
+# =========================
+# NETMANAGER
+# =========================
+net = NetManager(
+    wifi_ssid=SSID,
+    wifi_pass=PASSWORD,
+    mqtt_broker=MQTT_BROKER,
+    mqtt_user=MQTT_USER,
+    mqtt_pass=MQTT_PASS,
+    mqtt_port=MQTT_PORT,
+    base_topic=MQTT_BASE_TOPIC
+)
 
-
-import network
-import ubinascii
-from umqtt.simple import MQTTClient
-
-# WiFi configuration
-SSID = "ATLAS.NET"
-PASSWORD = "T1le-db-word!"
-
-# Initialize the WiFi interface in station mode
-wlan = network.WLAN(network.STA_IF)
-wlan.active(True)
-
-# Function to scan for WiFi networks
-def scan_wifi():
-    networks = wlan.scan()  # Perform the scan
-    for net in networks:
-        ssid = net[0].decode('utf-8')  # Network name
-        bssid = ':'.join(['%02x' % b for b in net[1]])  # MAC address
-        channel = net[2]  # Channel
-        RSSI = net[3]  # Signal strength
-        authmode = net[4]  # Authentication mode
-        #print(f"SSID: {ssid}, BSSID: {bssid}, Channel: {channel}, RSSI: {RSSI}, Authmode: {authmode}")
-    return ssid, bssid, channel, RSSI, authmode
-
-# Connect to WiFi
-def connect_wifi(ssid, password, max_attempts):
-    wlan.connect(ssid, password)
-    
-    attempts = 0
-    
-    while not wlan.isconnected() and attempts < max_attempts:
-        print("Connecting to WiFi...")
-        #display.clear()
-        display_status_bar(red_pen,"Connect tries: " + str(attempts))
-        time.sleep(1)
-        attempts += 1
-    
-    if wlan.isconnected():
-        print("Connected to WiFi")
-        ip, subnet, gateway, dns = wlan.ifconfig()
-        print("IP address:", ip)
-        print("Subnet mask:", subnet)
-        print("Gateway:", gateway)
-        print("DNS server:", dns)
-        display_status_bar(green_pen,"Connected!!!")
-        time.sleep(1)
-    else:
-        print('Failed to connect to WiFi')
-    
-    #print('Network config:', wlan.ifconfig())
-    
-
-# MQTT configuration
-MQTT_BROKER = "192.168.0.252"
-MQTT_PORT = 1883
-MQTT_TOPIC = "atlas.net/atlas-lab/picopi-oven/"
-MQTT_USER = "tiledb"
-MQTT_PASS = "T1le-db-word!"
-CLIENT_ID = ubinascii.hexlify(machine.unique_id())
-
-# Publish data to MQTT
-def publish_mqtt(topic, message):
-    client = MQTTClient(CLIENT_ID, MQTT_BROKER, port=MQTT_PORT, user=MQTT_USER, password=MQTT_PASS)
-    try:
-        client.connect()
-        client.publish(topic, message)
-        client.disconnect()
-        #print("MQTT Publish Success")
-        return "True"
-        
-    except Exception as e:
-        #print("MQTT Publish Failed:"+ str(e))
-        return "MQTT Publish Failed:"+ str(e)
-        
-
-
-#used by i2c now!
-#led = RGBLED(6, 7, 8)
-#led.set_rgb(0,0,0)     # Turn RGBLED OFF
-
-
-
-# ==== Board now setup ====
-#for i in range(8):
-#    display.set_pen(2**i)
-#    for z in range (40):
-#        display.line(0,i*40 +z,135,i*40+z)
-#display.update()
-#time.sleep(1)
-
-
-
-# I2C configuration
-I2C_ID = [0,1,0,1,0]
-SCL_PIN = [1,3,5,7,9]
-SDA_PIN = [0,2,4,6,8]
-
-# Sensor I2C address
-I2C_ADDRESS = [0x40,0x40,0x40,0x40,0x40]
-
-register_lut = [b'\x02',b'\x03',b'\xFE',b'\xFF']
-
-# Initialize I2C
-i2c = []
-for i in range(len(I2C_ID)):
-    print("Initializing HDC1080 I2C: ", i)
-    i2c.append(machine.I2C(I2C_ID[i], scl=machine.Pin(SCL_PIN[i]), sda=machine.Pin(SDA_PIN[i]), freq=400000))
-
-
+# =========================
+# SENSOR CONFIG
+# =========================
+I2C_ID = [0,1,0,1,0]; SCL_PIN=[1,3,5,7,9]; SDA_PIN=[0,2,4,6,8]; I2C_ADDRESS=[0x40]*5
 OW_DATA_PIN = [21,22,26,27,28]
-ow =[]
-# Initialize 1-Wire bus
-for o in range(len(OW_DATA_PIN)):
-    print("Initializing MAX31850K I2C: ", o)
-    ow.append(onewire.OneWire(machine.Pin(OW_DATA_PIN[o])))
 
+temperature_hdc1080 = [0]*len(I2C_ID)
+humidity_hdc1080 = [0]*len(I2C_ID)
+temperature_max31850k = [0]*len(OW_DATA_PIN)
+data_lock = _thread.allocate_lock()
 
-def to_binary(data):
-    return ' '.join('{:08b}'.format(byte) for byte in data)
+# I2C INIT
+i2c = [machine.I2C(I2C_ID[i], scl=machine.Pin(SCL_PIN[i]), sda=machine.Pin(SDA_PIN[i]), freq=400000) for i in range(len(I2C_ID))]
 
-def read_temperature_and_humidity_hdc1080(i2c_id):
+# ONEWIRE INIT
+ow = [onewire.OneWire(machine.Pin(pin)) for pin in OW_DATA_PIN]
+
+gc.collect()
+
+# =========================
+# SENSOR READ FUNCTIONS
+# =========================
+def read_temperature_and_humidity_hdc1080(i):
     try:
-        # Read 4 bytes of data from the sensor
-        i2c[i2c_id].writeto(I2C_ADDRESS[i2c_id], b'\x00') # command to read temperature
-        time.sleep(0.1)
-        temp_data = i2c[i2c_id].readfrom(I2C_ADDRESS[i2c_id], 2)
-        #time.sleep(0.1)
-        
-        i2c[i2c_id].writeto(I2C_ADDRESS[i2c_id], b'\x01') # command to read humidity
-        time.sleep(0.1)
-        hum_data = i2c[i2c_id].readfrom(I2C_ADDRESS[i2c_id], 2)
-        #time.sleep(0.1)
-        
-        # Convert the data to temperature and humidity
-        temperature = ((temp_data[0] << 8) + temp_data[1]) * 175.72 / 65536.0 - 46.85
-        humidity = ((hum_data[0] << 8) + hum_data[1]) * 125.0 / 65536.0 - 6.0
-        
-        return temperature, humidity
-    except Exception as e:
-        #print("Error reading from sensor:", e)
-        return 0, 0
+        i2c[i].writeto(I2C_ADDRESS[i],b'\x00'); time.sleep(0.05)
+        temp = i2c[i].readfrom(I2C_ADDRESS[i],2)
+        i2c[i].writeto(I2C_ADDRESS[i],b'\x01'); time.sleep(0.05)
+        hum = i2c[i].readfrom(I2C_ADDRESS[i],2)
+        t = ((temp[0]<<8)+temp[1])*175.72/65536.0-46.85
+        h = ((hum[0]<<8)+hum[1])*125.0/65536.0-6
+        return t,h
+    except: return 0,0
 
 def get_temperature_and_humidity_hdc1080():
-    temperature_array=[]
-    humidity_array=[]
-    for s in range(len(I2C_ID)):
-        #print("Sensor on I2C chain: ",I2C_ID[s])
-        temperature, humidity = read_temperature_and_humidity_hdc1080(s)
-        temperature_array.append(temperature)
-        humidity_array.append(humidity)
-    return temperature_array, humidity_array
-
-def print_temperature_and_humidity_hdc1080(temperature, humidity):
-    for s in range(len(I2C_ID)):
-        print("Sensor ", s," -> Temperature: {:.2f} C".format(temperature[s])," -> Humidity: {:.2f} %".format(humidity[s]))
+    t,h = [],[]
+    for i in range(len(I2C_ID)):
+        temp,hum = read_temperature_and_humidity_hdc1080(i)
+        t.append(temp); h.append(hum)
+    return t,h
 
 def get_temperature_max31850k():
-    temperature_array=[]
+    temps=[]
     for o in range(len(OW_DATA_PIN)):
         roms = ow[o].scan()
-        #print("Found devices:", roms)
+        if roms:
+            rom=roms[0]; ow[o].reset(); ow[o].select_rom(rom); ow[o].writebyte(0x44); time.sleep(0.75)
+            ow[o].reset(); ow[o].select_rom(rom); ow[o].writebyte(0xBE)
+            data=[ow[o].readbyte() for _ in range(9)]
+            temp=(data[1]<<8|data[0])*0.0625
+            temps.append(temp)
+        else: temps.append(0)
+    return temps
 
-        if len(roms)>0:
-            #print("1-Wire devices detected:", roms)
-
-            for rom in roms:
-                ow[o].reset()
-                ow[o].select_rom(rom)
-                ow[o].writebyte(0x44)  # Start temperature conversion
-                time.sleep(1)  # Wait for conversion to complete
-
-                ow[o].reset()
-                ow[o].select_rom(rom)
-                ow[o].writebyte(0xBE)  # Read scratchpad
-                data = bytearray(9)
-                for i in range(9):
-                    data[i] = ow[o].readbyte()
-
-                # Convert the data to temperature
-                temp_lsb = data[0]
-                temp_msb = data[1]
-                temp = (temp_msb << 8 | temp_lsb) * 0.0625
-                temperature_array.append(temp)
-                #print("Sensor MAX31850K: ", str(o) ,"-> Temperature: {:.2f} °C".format(temp))
-
-
-        else:
-            temp=0
-            temperature_array.append(temp)
-            #print("Sensor MAX31850K: ", str(o) ,"-> Temperature: {:.2f} °C".format(temp))
-    return temperature_array
-
-def print_temperature_max31850k(temperature):
-    for o in range(len(OW_DATA_PIN)):
-        print("Sensor MAX31850K: ", str(o) ,"-> Temperature: {:.2f} °C".format(temperature[o]))
-
-def display_values(temperature_hdc1080, humidity_hdc1080, temperature_max31850k):
+# =========================
+# DISPLAY
+# =========================
+def display_values(temp_h,hum_h,temp_k):
     display_clear()
     display.set_pen(255)
-    y_coordinate=5
-    for s in range(len(temperature_hdc1080)):
-        text="Sb"+str(s)+"-> T: "+str(temperature_hdc1080[s]) +"C"# + " - H: "+str(humidity_hdc1080[s])+"%"
-        display.text(text, 0, y_coordinate, 135, 0.45)
-        y_coordinate=y_coordinate+15
-    for s in range(len(humidity_hdc1080)):
-        text="Sb"+str(s)+"-> H: "+str(humidity_hdc1080[s])+"%"
-        display.text(text, 0, y_coordinate, 135, 0.45)
-        y_coordinate=y_coordinate+15
-    for s in range(len(temperature_max31850k)):
-        text="Ss"+str(s)+"-> T: "+str(temperature_max31850k[s])+"C"
-        display.text(text, 0, y_coordinate, 135, 0.45)
-        y_coordinate=y_coordinate+15
+    y=5
+    for i in range(len(temp_h)): display.text("Sb"+str(i)+" T:"+str(round(temp_h[i],1)),0,y,135,0.45); y+=15
+    for i in range(len(hum_h)): display.text("Sb"+str(i)+" H:"+str(round(hum_h[i],1)),0,y,135,0.45); y+=15
+    for i in range(len(temp_k)): display.text("Ss"+str(i)+" T:"+str(round(temp_k[i],1)),0,y,135,0.45); y+=15
     display.update()
-    
-def publish_mqtt_values(temperature_hdc1080, humidity_hdc1080, temperature_max31850k):
-    mqtt_status="True"
-    for s in range(len(temperature_hdc1080)):
-        topic=MQTT_TOPIC+"temperature/hdc1080_"+str(s)
-        value=str(temperature_hdc1080[s])
-        mqtt_status_buffer=publish_mqtt(topic,value)
-        if not (mqtt_status_buffer=="True"):
-            mqtt_status=mqtt_status_buffer
-    for s in range(len(humidity_hdc1080)):
-        topic=MQTT_TOPIC+"humidity/hdc1080_"+str(s)
-        value=str(humidity_hdc1080[s])
-        mqtt_status_buffer=publish_mqtt(topic,value)
-        if not (mqtt_status_buffer=="True"):
-            mqtt_status=mqtt_status_buffer
 
-    for s in range(len(temperature_max31850k)):
-        topic=MQTT_TOPIC+"temperature/max31850_"+str(s)
-        value=str(temperature_max31850k[s])
-        mqtt_status_buffer=publish_mqtt(topic,value)
-        if not (mqtt_status_buffer=="True"):
-            mqtt_status=mqtt_status_buffer
-    return mqtt_status
+# =========================
+# HOME ASSISTANT DISCOVERY
+# =========================
+def send_discovery(net, hdc_count, max_count):
+    device_id=f"{BOARD_NAME}_{BOARD_ID}"
+    base=MQTT_BASE_TOPIC
+    device={"identifiers":[device_id],"name":f"{BOARD_NAME} {BOARD_ID}","manufacturer":"Custom","model":"Pico Sensor Hub"}
 
-# Main loop
-ssid_find_attempts = 0
-found_ssid, found_bssid, found_channel, found_RSSI, found_authmode = scan_wifi()
-print("Found SSIDs...")
-print(found_ssid)
-#print("Found BSSIDs...")
-#print(found_bssid)
+    for i in range(hdc_count):
+        # temp
+        sensor_id=f"{device_id}_hdc1080_temp_{i}"
+        topic=f"{DISCOVERY_PREFIX}/sensor/{sensor_id}/config"
+        payload={"name":f"HDC1080 {i} Temperature","state_topic":f"{base}/temperature/hdc1080_{i}","unit_of_measurement":"°C","device_class":"temperature","state_class":"measurement","suggested_display_precision":1,"unique_id":sensor_id,"device":device}
+        net.publish_raw(topic.encode(),ujson.dumps(payload).encode())
+        # hum
+        sensor_id=f"{device_id}_hdc1080_hum_{i}"
+        topic=f"{DISCOVERY_PREFIX}/sensor/{sensor_id}/config"
+        payload={"name":f"HDC1080 {i} Humidity","state_topic":f"{base}/humidity/hdc1080_{i}","unit_of_measurement":"%","device_class":"humidity","state_class":"measurement","suggested_display_precision":1,"unique_id":sensor_id,"device":device}
+        net.publish_raw(topic.encode(),ujson.dumps(payload).encode())
 
+    for i in range(max_count):
+        sensor_id=f"{device_id}_max31850_{i}"
+        topic=f"{DISCOVERY_PREFIX}/sensor/{sensor_id}/config"
+        payload={"name":f"Thermocouple {i}","state_topic":f"{base}/temperature/max31850_{i}","unit_of_measurement":"°C","device_class":"temperature","state_class":"measurement","suggested_display_precision":1,"unique_id":sensor_id,"device":device}
+        net.publish_raw(topic.encode(),ujson.dumps(payload).encode())
 
-while (ssid_find_attempts<5):
-    found_ssid, found_bssid, found_channel, found_RSSI, found_authmode = scan_wifi()
-    print(SSID + " not found... " + "Retrying " + str(ssid_find_attempts) + " times...")
-    print("Found SSIDs...")
-    print(found_ssid)
-    if SSID in found_ssid:
-        break
-    ssid_find_attempts=ssid_find_attempts+1
+# =========================
+# THREADS
+# =========================
+def sensor_display_thread():
+    global temperature_hdc1080, humidity_hdc1080, temperature_max31850k
+    while True:
+        t,h = get_temperature_and_humidity_hdc1080()
+        k = get_temperature_max31850k()
+        data_lock.acquire()
+        temperature_hdc1080 = t; humidity_hdc1080 = h; temperature_max31850k = k
+        data_lock.release()
+        display_values(t,h,k)
+        gc.collect()
+        time.sleep(1)
 
-connect_wifi(SSID, PASSWORD, 10)
-wlan_ip, wlan_subnet, wlan_gateway, wlan_dns = wlan.ifconfig()
+def network_thread():
+    while True:
+        if net.ensure_connected() and net.mqtt is not None:
+            send_discovery(net,len(I2C_ID),len(OW_DATA_PIN))
+            data_lock.acquire()
+            t=temperature_hdc1080.copy(); h=humidity_hdc1080.copy(); k=temperature_max31850k.copy()
+            data_lock.release()
+            for i in range(len(t)): net.publish(f"temperature/hdc1080_{i}",str(t[i]))
+            for i in range(len(h)): net.publish(f"humidity/hdc1080_{i}",str(h[i]))
+            for i in range(len(k)): net.publish(f"temperature/max31850_{i}",str(k[i]))
+        gc.collect()
+        time.sleep(5)
 
-ssid_find_attempts=0
-    
-status_pen=green_pen
-reconnect_wait_time=0
-while True:
-    temperature_hdc1080, humidity_hdc1080 = get_temperature_and_humidity_hdc1080()
-    print_temperature_and_humidity_hdc1080(temperature_hdc1080, humidity_hdc1080)
-    
-    temperature_max31850k=get_temperature_max31850k()
-    print_temperature_max31850k(temperature_max31850k)
-
-    if(wlan.isconnected()):
-        mqtt_status=publish_mqtt_values(temperature_hdc1080, humidity_hdc1080, temperature_max31850k)
-        if (mqtt_status=="True"):
-            status_pen=green_pen
-        else:
-            print(mqtt_status)
-            status_pen=blue_pen
-    else:
-        print("Wifi disconnected!!!!")
-        status_pen=red_pen
-    
-    display_values(temperature_hdc1080, humidity_hdc1080, temperature_max31850k)
-        
-    if wlan.isconnected():
-        wait_time = 0
-        status_text=wlan_ip
-    else:
-        status_text="Retry in: "+str(reconnect_wait_time)+ " cycles"
-        if reconnect_wait_time<60:
-            reconnect_wait_time=reconnect_wait_time+1
-        else:
-            reconnect_wait_time=0
-            if SSID in found_ssid:
-                connect_wifi(SSID, PASSWORD, 10)
-                wlan_ip, wlan_subnet, wlan_gateway, wlan_dns = wlan.ifconfig()
-
-        
-    
-    display_status_bar(status_pen,status_text)
-    
-    
-    time.sleep(0.5)
-        #for reg in register_lut:
-        #    i2c[s].writeto(I2C_ADDRESS[s], reg)
-        #    data = i2c[s].readfrom(I2C_ADDRESS[s], 2)
-        #    print("Reg: " ,str(reg), " -> Data: ", str(to_binary(data)))
-    
-
-
-
-
-
-
-
+# =========================
+# START THREADS
+# =========================
+print("Starting threads")
+_thread.start_new_thread(network_thread,())
+sensor_display_thread()
