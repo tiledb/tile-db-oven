@@ -47,6 +47,9 @@
 
           <button id="sendBtn" class="btn-set btn-glow">Send</button>
           <button id="downloadLogBtn" class="btn-glow">Download Log</button>
+          <button id="restartServiceBtn" class="quickBtn btn-set btn-glow" data-cmd="restartService">Restart
+            Service</button>
+
         </div>
       </div>
     </div>
@@ -70,11 +73,18 @@
         <div id="burninClock" style="width: 200px; height: 200px;"></div>
 
         <div class="gauge-labels">
+          <div class="gauge-row">
+            <span class="status-label">Batch ID:</span>
+            <span id="statusBatchId">-</span>
+          </div>
           <div class="gauge-row"><span class="status-label">RunTotal:</span> <span
               id="statusRunTotalMins">00:00:00</span></div>
           <div class="gauge-row"><span class="status-label">Accrued:</span> <span
               id="statusBurninAccruedSecs">00:00:00</span></div>
           <div class="gauge-row"><span class="status-label">Running:</span> <span id="statusRunningTime">00:00:00</span>
+          </div>
+          <div class="gauge-row"><span class="status-label">ArduinoRunning:</span> <span
+              id="proccessorRunningTime">00:00:00</span>
           </div>
         </div>
       </div>
@@ -97,6 +107,9 @@
 
       <!-- Burn-in buttons -->
       <div class="command-row" id="burninRow">
+        <button class="quickBtn btn-glow btn-set" data-cmd="setBatchID">Set BatchID</button>
+        <input type="text" id="batchId" placeholder="Enter Batch ID">
+
         <button class="quickBtn btn-glow btn-set" data-cmd="start">Start Burn-in</button>
         <button class="quickBtn btn-glow btn-set" data-cmd="stop">Stop Burn-in</button>
         <button class="quickBtn btn-glow btn-set" data-cmd="resetBurnin">Reset Burn-in Status</button>

@@ -83,6 +83,9 @@ float getAveragedTemperatureADC(int new_sample)
 unsigned long lastTempSample = 0;
 const unsigned long tempSampleInterval = 200; // milliseconds
 
+unsigned long lastLoopExec = 0;
+const unsigned long loopExecSampleInterval = 200; // milliseconds
+
 
 // Temperature related variables
 float target_temperature = 50; // in °C
@@ -130,15 +133,18 @@ int voltage_read_enable = 0;
 int read_settings = 0;
 
 // duration of the burn-in run
-int requested_run_hours = 0;
-int requested_run_minutes = 0;
+unsigned long int requested_run_hours = 120;
+unsigned long int requested_run_minutes = 0;
 //
 unsigned long startMilTime; // time counters in milliseconds
 unsigned long currentAccruedBurninMinutes = 0;
 unsigned long currentAccruedBurninSeconds = 0;
 unsigned long pastAccruedBurninMinutes =0;
 unsigned long pastAccruedBurninSeconds =0;
+unsigned long processorRunningTime = 0;
+
 bool burninDone = false;
+// int resetClicks = 0;
 unsigned long start_mil_running_time; // time counters in milliseconds
 unsigned long running_time = 0;
 
@@ -186,19 +192,18 @@ void setup() {
   */
   
   // requested burnin time
-  requested_run_hours = 0;
-  requested_run_minutes = 1;
+  requested_run_hours = 120;
+  requested_run_minutes = 0;
 
   // initialize timer:
-  SetupTimer();
   k = 0;
 
   Serial.println("DB Oven: Finished setup, starting in state=Idle");
   Serial.println("Waiting for user commands");
 }
 
-void checkBurninDone(){
-  if (burninDone) {
+void resetBurninDone(bool force){
+  if (burninDone || force) {
     running_time = 0;
     burninDone= false;
     currentAccruedBurninMinutes=0;
@@ -206,8 +211,37 @@ void checkBurninDone(){
     currentAccruedBurninSeconds=0;
     pastAccruedBurninSeconds=0;
     Serial.println("Resetting Burning Done to 0!");
+    // resetClicks = 0;
   }
 }
+
+
+  void printSmallReport(){
+          Serial.print  ("state: ");
+          Serial.print(state);
+          Serial.print  (" | previous_state ");
+          Serial.print(previous_state);
+          Serial.print  (" | heater ");
+          Serial.print(enable_heater);
+          Serial.print  (" | overtemp ");
+          Serial.print(overtemp);
+          Serial.print  (" | enable_run ");
+          Serial.print(enable_run);
+          Serial.print  (" | lv");
+          Serial.println(enable_lv_power);
+
+          Serial.print  ("temp = ");
+          Serial.print(temp_calibrated);
+          Serial.print  (" | accrued = ");
+          Serial.print(currentAccruedBurninSeconds);
+          Serial.print  (" | required = ");
+          Serial.println(requested_run_minutes + 3600* requested_run_hours*60);
+
+
+          
+        
+
+  }
 
 void loop() {
 
@@ -217,18 +251,10 @@ void loop() {
     updateTemperature();
   }
 
-  // // Oven control state machine
 
-  // temperature = getAveragedTemperatureADC(analogRead(Temp));
-  // temp_calibrated = (((temperature * (4980.0 / 1023)) - 2365.0) / ((1399.0 - 2365.0) / (90.0 - 20.0))) + 20.0 - temp_offset;
-
-
-
-
-  if (TCNT5 < 12000) {
-
-    TCNT5 = 63974; // 0.1 second interval
-
+  if (millis() - lastLoopExec >= loopExecSampleInterval) {
+    processorRunningTime=millis();
+    lastLoopExec = millis();
     // Check for commands;
 
     command = -1;
@@ -462,9 +488,10 @@ void loop() {
         case 16:
           if (parameter==0){
             Serial.println("Resetting burning flag!");
-            checkBurninDone();
+            resetBurninDone(false);
           } else {
-
+            Serial.println("Resetting burning flag!");
+            resetBurninDone(true);
           }
           break;
 
@@ -503,6 +530,7 @@ void loop() {
           state = 1;
           previous_state = 0;
           running_time=0;
+          printSmallReport();
           start_mil_running_time= millis();}
         if (debug_mode == 1) state = 4;
 
@@ -518,10 +546,8 @@ void loop() {
         if (temp_calibrated > target_temperature) {
           state = 2;
           previous_state =1;
+          printSmallReport();
           startMilTime = millis(); // keep track of the time when we enter burnin state
-          Serial.print("Current temperature (°C) is ");
-          Serial.print(temp_calibrated);
-          Serial.println(" --> Switching to State = burn-in.");
         }
         
         if (debug_mode == 1) {
@@ -548,44 +574,31 @@ void loop() {
             previous_state =2;
             burninDone = true;
             enable_run = 0;
-            Serial.print  ("pastAccruedBurninMinutes = ");
-            Serial.println(pastAccruedBurninMinutes);
-            Serial.print  ("currentAccruedBurninMinutes = ");
-            Serial.println(currentAccruedBurninMinutes);
-            Serial.print  ("total required burnin minutes = ");
-            Serial.println(requested_run_minutes + 60* requested_run_hours);
-            Serial.println("Burnin completed, going to Idle - Make sure to reset Arduino for the next batch!");
-            Serial.println("================================================================================");
+            printSmallReport();
         }
 
         // Go to State = CoolDown if overtemperature condition
-        if (temp_calibrated > max_temperature) { // Max temperature exceeded. Disable run and set overtemp flag
+        else if (temp_calibrated > max_temperature) { // Max temperature exceeded. Disable run and set overtemp flag
           enable_run = 1;
           overtemp = 1;
           state = 3;
           previous_state = 2;
           enable_lv_power = 0;
           // keep track of how much burnin was done so far
-          Serial.print("Overtemperarure: ");
-          Serial.print(temp_calibrated); Serial.println(" °C");
-          Serial.println("Reached overtemperature, going idle !");
+          printSmallReport();
           
           // keep track of how much burnin was done so far
-          pastAccruedBurninSeconds = pastAccruedBurninSeconds + millisec2seconds(millis()-startMilTime);
+          pastAccruedBurninSeconds = currentAccruedBurninSeconds;
           pastAccruedBurninMinutes = (unsigned long)pastAccruedBurninSeconds/60.0;
 
-          Serial.print  ("total accrued burnin minutes = ");
-          Serial.println(pastAccruedBurninMinutes);
+
           
-          Serial.print  ("total required burnin minutes = ");
-          Serial.println(requested_run_minutes + 60* requested_run_hours);
-          
-          Serial.println("Burnin not completed, but going to Idle - Restart cycle (0,1) when overtemperature condition is resolved!");
+          Serial.println("Overtemperature! Cooling Down!");
         }
 
 
         // Keep temperature 
-        if (temp_calibrated > (max_temperature + target_temperature)/2) { // "-1" to avoid oscillations when Toven is just at threshold which give quick on/off/on..
+        else if (temp_calibrated > (max_temperature + target_temperature)/2) { // "-1" to avoid oscillations when Toven is just at threshold which give quick on/off/on..
           state = 2;
           previous_state =2;
           enable_run = 1;
@@ -593,18 +606,11 @@ void loop() {
           enable_lv_power = 1;
           overtemp = 0;
           
-          Serial.print("temperature raising, heater off before getting to max threshold: ");
-          Serial.print(temp_calibrated); Serial.println(" °C");
-          
-          Serial.print  ("total accrued burnin minutes = ");
-          Serial.println(pastAccruedBurninMinutes);
-          
-          Serial.print  ("total required burnin minutes = ");
-          Serial.println(requested_run_minutes + 60* requested_run_hours);
+          printSmallReport();
  
         }
 
-        if (temp_calibrated < (min_temperature + target_temperature)/2) { // "-1" to avoid oscillations when Toven is just at threshold which give quick on/off/on..
+        else if (temp_calibrated < (min_temperature + target_temperature)/2) { // "-1" to avoid oscillations when Toven is just at threshold which give quick on/off/on..
           state = 2;
           previous_state =2;
           enable_run = 1;
@@ -612,20 +618,13 @@ void loop() {
           enable_lv_power = 1;
           overtemp = 0;
           
-          Serial.print("temperature going down, heater on before getting to min threshold: ");
-          Serial.print(temp_calibrated); Serial.println(" °C");
-          
-          Serial.print  ("total accrued burnin minutes = ");
-          Serial.println(pastAccruedBurninMinutes);
-          
-          Serial.print  ("total required burnin minutes = ");
-          Serial.println(requested_run_minutes + 60* requested_run_hours);
+          printSmallReport();
  
         }
 
 
         // Go to State ="Warmup" if T<Tmin-1 
-        if (temp_calibrated < min_temperature) { // "-1" to avoid oscillations when Toven is just at threshold which give quick on/off/on..
+        else if (temp_calibrated < min_temperature) { // "-1" to avoid oscillations when Toven is just at threshold which give quick on/off/on..
           state = 1;
           previous_state =2;
           enable_run = 1;
@@ -633,20 +632,15 @@ void loop() {
           enable_lv_power = 0;
           overtemp = 0;
           
-          Serial.print("Undertemperature: ");
-          Serial.print(temp_calibrated); Serial.println(" °C");
-          Serial.println("... going back to State=\"Warmup\" !");
-          
           // keep track of how much burnin was done so far
-          pastAccruedBurninSeconds = pastAccruedBurninSeconds + millisec2seconds(millis()-startMilTime);
+          pastAccruedBurninSeconds = currentAccruedBurninSeconds;
           pastAccruedBurninMinutes = (unsigned long)pastAccruedBurninSeconds/60.0;
 
-          Serial.print  ("total accrued burnin minutes = ");
-          Serial.println(pastAccruedBurninMinutes);
-          
-          Serial.print  ("total required burnin minutes = ");
-          Serial.println(requested_run_minutes + 60* requested_run_hours);
+          printSmallReport();
  
+        }
+        else {
+
         }
 
 
@@ -665,6 +659,8 @@ void loop() {
         if (temp_calibrated < target_temperature) {
           state = 2; // Temperature below min burn-in temperature. Go to idle state but mantain registers
           previous_state =3;
+          startMilTime = millis(); // keep track of the time when we enter burnin state
+          printSmallReport();
         }
         if (debug_mode == 1) state = 4;
 
@@ -882,7 +878,10 @@ void loop() {
         Serial.print(" | LVPower=");
         Serial.print(enable_lv_power);
         Serial.print(" | BurninDone=");
-        Serial.println(burninDone);
+        Serial.print(burninDone);
+        Serial.print(" | ProccessorRunningTime=");
+        Serial.println(processorRunningTime);
+        
       }
       
 
@@ -908,18 +907,6 @@ void serialEvent() {
       NewCommand = true;
     }
   }
-}
-
-void SetupTimer() {
-  // Use timer 5 (16 bits)
-  // System clock is 16 MHz
-  // When TCNT5 overflows to zero, re-load it to 3036.
-  // noInterrupts();
-  TCCR5A = 0;
-  TCCR5B = 0;
-  TCNT5 = 63974; // preload timer 65536-16MHz/256/1Hz  (Ideal count 49911, 63974 for 10 Hz);
-  TCCR5B |= (1 << CS12);
-  TCCR5B |= (1 << CS10);    // 1024 prescaler
 }
 
 // Functions:

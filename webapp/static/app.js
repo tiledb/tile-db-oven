@@ -332,12 +332,39 @@ const sendCommand = async (cmd) => {
     }
 };
 
+
+function sendBatchId() {
+    const batchId = document.getElementById("batchId").value || 0;
+
+    return fetch(`${window.APP_PREFIX}/set_batchid`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ batch_id: batchId })
+    });
+}
+
 // --- Quick command buttons ---
 document.querySelectorAll(".quickBtn").forEach(btn => {
     btn.addEventListener("click", () => {
         const cmdType = btn.dataset.cmd;
         switch (cmdType) {
-            case "start": sendCommand("0,1"); break;
+            case "restartService":
+                fetch(`${window.APP_PREFIX}/restart_service`, { method: "POST" })
+                    .then(res => res.json())
+                    .then(data => {
+                        console.log("Service restart:", data);
+                        alert(data.message); // optional: notify user
+                    })
+                    .catch(err => console.error(err));
+                location.reload();
+                break;
+            case "setBatchID":
+                sendBatchId()
+                break;
+            case "start": 
+                sendBatchId();
+                sendCommand("0,1"); 
+                break;
             case "stop": sendCommand("0,0"); break;
             case "setTime": (async () => {
                 const h = document.getElementById("hours").value || 0;
@@ -600,6 +627,12 @@ setInterval(async () => {
         document.getElementById("statusRunningTime").innerText =
             formatSeconds(s.RunningTime) || formatSeconds(0);
 
+        document.getElementById("proccessorRunningTime").innerText =
+            formatSeconds(Math.round(s.ProccessorRunningTime/1000)) || formatSeconds(0);
+
+            
+        document.getElementById("statusBatchId").innerText = s.BatchId || "-";
+
         // -----------------------------
         // LEDs
         // -----------------------------
@@ -674,3 +707,5 @@ setInterval(async () => {
     }
 
 },1000);
+
+

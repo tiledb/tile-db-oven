@@ -5,6 +5,8 @@ import threading
 import atexit
 from datetime import datetime, UTC
 
+import subprocess
+
 from collections import deque
 
 from flask import Flask, render_template, request, jsonify, send_file, make_response, redirect, url_for
@@ -101,7 +103,7 @@ app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_prefix=1)
 
 ser = None
-serial_buffer = deque(maxlen=2000)
+serial_buffer = deque(maxlen=500)
 serial_lock = threading.Lock()
 serial_write_lock = threading.Lock()
 
@@ -143,7 +145,9 @@ oven_status = {
     "LV2": "",
     "LV3": "",
     "LVPower": "",
-    "BurninDone": ""
+    "BurninDone": "",
+    "BatchId": "",
+    "ProccessorRunningTime": ""
 }
 
 oven_timestamp = None
@@ -387,6 +391,28 @@ def download_log():
     except Exception as e:
         return f"Error downloading log: {e}", 500
 
+
+@app.route("/set_batchid", methods=["POST"])
+def set_batchid():
+    global oven_status
+    data = request.json
+    batch_id = data.get("batch_id", 0)
+    oven_status["BatchId"] = batch_id
+    # print(f"Batch ID set to: {batch_id}")
+    return {"status": "ok", "BatchId": batch_id}
+
+
+@app.route("/restart_service", methods=["POST"])
+def restart_service():
+    try:
+        # Run the systemctl command as root
+        subprocess.run(
+            ["sudo", "systemctl", "restart", "tile-oven-control.service"],
+            check=True
+        )
+        return jsonify({"success": True, "message": "Oven service restarted."})
+    except subprocess.CalledProcessError as e:
+        return jsonify({"success": False, "message": str(e)})
 
 # ---------------------------------------------------
 # CLEANUP
