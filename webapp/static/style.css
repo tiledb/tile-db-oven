@@ -23,7 +23,8 @@ h1, h2 {
 /* ------------------------- Boxes ------------------------- */
 .connection-box,
 .quick-commands,
-.console-box {
+.console-box,
+#ovenStatusBox {
   background: radial-gradient(circle at top left, #1e1e1e, #111);
   padding: 20px;
   border-radius: 12px;
@@ -34,7 +35,8 @@ h1, h2 {
 
 .connection-box:hover,
 .quick-commands:hover,
-.console-box:hover {
+.console-box:hover,
+#ovenStatusBox:hover {
   box-shadow: 0 0 30px rgba(0,255,0,0.2);
 }
 
@@ -49,7 +51,8 @@ h1, h2 {
 
 /* ------------------------- Input Fields ------------------------- */
 .command-row input[type="number"],
-.command-row select {
+.command-row select,
+#ovenStatusBox input[type="number"] {
   width: 70px;
   padding: 10px;
   border-radius: 6px;
@@ -62,7 +65,9 @@ h1, h2 {
   transition: box-shadow 0.3s, transform 0.2s;
 }
 
-.command-row input[type="number"]:focus {
+.command-row input[type="number"]:focus,
+#ovenStatusBox input[type="number"]:focus,
+.command-row select:focus {
   outline: none;
   box-shadow: inset 0 0 12px #0f0;
   transform: scale(1.05);
@@ -97,8 +102,6 @@ h1, h2 {
 .btn-set.btn-glow:hover { box-shadow: 0 0 15px #00f, 0 0 30px #00f inset; }
 
 /* ------------------------- LEDs ------------------------- */
-/* ------------------------- LED Base ------------------------- */
-
 .led {
   width: 18px;
   height: 18px;
@@ -106,56 +109,25 @@ h1, h2 {
   display: inline-block;
   margin-right: 5px;
 
-  /* OFF state */
   background: #600;
   box-shadow: 0 0 6px #900 inset;
   transition: all 0.2s ease;
 }
 
-/* ------------------------- ON State ------------------------- */
-
 .led.on {
   background: #00ff66;
-
   box-shadow:
       0 0 8px #00ff66,
       0 0 16px #00ff66,
       0 0 30px rgba(0,255,100,0.7);
-
   animation: ledPulse 1.2s infinite;
 }
 
-/* ------------------------- Pulse Animation ------------------------- */
-
 @keyframes ledPulse {
-
-  0% {
-    transform: scale(1);
-    box-shadow:
-        0 0 8px #00ff66,
-        0 0 16px #00ff66,
-        0 0 30px rgba(0,255,100,0.7);
-  }
-
-  50% {
-    transform: scale(1.15);
-    box-shadow:
-        0 0 14px #00ff66,
-        0 0 28px #00ff66,
-        0 0 45px rgba(0,255,100,0.9);
-  }
-
-  100% {
-    transform: scale(1);
-    box-shadow:
-        0 0 8px #00ff66,
-        0 0 16px #00ff66,
-        0 0 30px rgba(0,255,100,0.7);
-  }
-
+  0% { transform: scale(1); box-shadow:0 0 8px #0f0,0 0 16px #0f0,0 0 30px rgba(0,255,100,0.7);}
+  50% { transform: scale(1.15); box-shadow:0 0 14px #0f0,0 0 28px #0f0,0 0 45px rgba(0,255,100,0.9);}
+  100% { transform: scale(1); box-shadow:0 0 8px #0f0,0 0 16px #0f0,0 0 30px rgba(0,255,100,0.7);}
 }
-
-/* ------------------------- Blink Mode ------------------------- */
 
 .led.blink {
   animation: ledBlink 1s infinite;
@@ -166,7 +138,6 @@ h1, h2 {
 }
 
 /* ------------------------- Console ------------------------- */
-
 .console-box {
   height: 320px;
   overflow-y: auto;
@@ -179,9 +150,7 @@ h1, h2 {
   box-shadow: 0 0 15px rgba(0,255,0,0.2);
 }
 
-#consoleOutput {
-  display: block;
-}
+#consoleOutput { display: block; }
 
 .console-line {
   opacity: 0;
@@ -220,62 +189,7 @@ h1, h2 {
   z-index: 10;
 }
 
-/* ------------------------- General Inputs ------------------------- */
-input, select {
-  background-color: #111;
-  color: #0f0;
-}
-
-/* Match quick commands style */
-.connection-box .command-row input[type="text"],
-.connection-box .command-row input[type="number"],
-.connection-box .command-row select {
-  background-color: #111;
-  color: #0f0;
-  font-family: monospace;
-  font-size: 15px;
-  padding: 10px;
-  border-radius: 6px;
-  border: none;
-  text-align: center;
-  box-shadow: inset 0 0 5px #0f0;
-  transition: box-shadow 0.3s, transform 0.2s;
-}
-
-.connection-box .command-row input[type="text"]:focus,
-.connection-box .command-row input[type="number"]:focus,
-.connection-box .command-row select:focus {
-  outline: none;
-  box-shadow: inset 0 0 12px #0f0;
-  transform: scale(1.05);
-}
-
-/* Make buttons share row space like quick commands */
-.connection-box .command-row .btn-glow {
-  flex-grow: 1;
-}
-
-.connection-box .command-row select#port {
-  width: 150px;       /* wider for readability */
-  padding: 10px;
-  border-radius: 6px;
-  border: none;
-  background-color: #111;
-  color: #0f0;
-  font-size: 15px;
-  text-align: center;
-  box-shadow: inset 0 0 5px #0f0;
-  transition: box-shadow 0.3s, transform 0.2s;
-}
-
-.connection-box .command-row select#port:focus {
-  outline: none;
-  box-shadow: inset 0 0 12px #0f0;
-  transform: scale(1.05);
-}
-
-
-/* Help overlay centered in screen */
+/* ------------------------- Manual Help Overlay ------------------------- */
 .help-overlay {
   position: fixed;
   top: 0;
@@ -283,7 +197,7 @@ input, select {
   width: 100vw;
   height: 100vh;
   background: rgba(0, 0, 0, 0.85);
-  display: none;       /* hidden by default */
+  display: none;
   justify-content: center;
   align-items: center;
   z-index: 999;
@@ -318,7 +232,6 @@ input, select {
   box-shadow: inset 0 0 10px #0f0;
 }
 
-/* Close button styling like quick commands */
 #closeHelpBtn {
   display: block;
   margin: 20px auto 0 auto;
@@ -333,10 +246,9 @@ input, select {
   to { opacity: 1; }
 }
 
-
-/* Oven Status box matches Quick Commands */
+/* ------------------------- Oven Status / Gauges ------------------------- */
 #ovenStatusBox input {
-  width: 70px;             /* same as quick commands inputs */
+  width: 70px;
   text-align: center;
   font-family: monospace;
   font-size: 15px;
@@ -355,53 +267,51 @@ input, select {
   transform: scale(1.05);
 }
 
-
-
-.status-row{
-display:flex;
-align-items:center;
-gap:40px;
-margin:15px 0;
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  margin: 15px 0;
 }
 
-.running-time{
-font-size:20px;
-font-weight:bold;
+.running-time {
+  font-size: 20px;
+  font-weight: bold;
 }
 
-.leds{
-flex-wrap:wrap;
-gap:20px;
+.leds {
+  flex-wrap: wrap;
+  gap: 20px;
 }
 
-.led-item{
-display:flex;
-align-items:center;
-gap:10px;
-font-size:16px;
+.led-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
 }
 
-
-
-.gauge-labels{
-display:flex;
-flex-direction:column;
-gap:6px;
-margin-top:8px;
+.gauge-labels {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
 }
 
-.gauge-row{
-display:flex;
-align-items:center;
-gap:8px;
-font-size:16px;
+.gauge-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
 }
 
-.status-label{
-font-weight:bold;
-color:#ddd;
+.status-label {
+  font-size: 10pt;
+  font-weight: bold;
+  color: #ddd;
 }
 
+/* Glow animations for gauges */
 #tempGauge.running,
 #burninClock.running {
     position: relative;
@@ -426,6 +336,8 @@ color:#ddd;
 #burninClock.glow {
     position: relative;
     transition: box-shadow 0.3s ease-in-out;
+    animation: glowPulse 1.5s infinite;
+    border-radius: 50%;
 }
 
 @keyframes glowPulse {
@@ -434,20 +346,13 @@ color:#ddd;
     100% { box-shadow: 0 0 10px 2px rgba(0,255,102,0.4); }
 }
 
-#tempGauge.glow,
-#burninClock.glow {
-    animation: glowPulse 1.5s infinite;
-    border-radius: 50%; /* ensure rounded glow for circular gauges */
-}
-
-
 @keyframes pulse {
     0%   { transform: scale(1); opacity: 0.1; }
     50%  { transform: scale(1.05); opacity: 0.6; }
     100% { transform: scale(1); opacity: 0.1; }
 }
 
-
+/* Oven State Graph Glow */
 #ovenStateGraph.glow {
     animation: graphPulse 1.2s infinite;
 }
@@ -458,18 +363,284 @@ color:#ddd;
     100% { box-shadow: 0 0 6px #00ff66; }
 }
 
+/* Graph container */
 #ovenStateGraph-container {
     display: flex;
-    flex-direction: column; /* stack graph + LEDs */
-    align-items: center;    /* horizontal centering */
-    justify-content: center; /* vertical centering if needed */
-    gap: 10px; /* spacing between graph and LED row */
-    margin: 20px auto; /* center container horizontally */
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin: 20px auto;
 }
 
 .status-row.leds {
     display: flex;
-    justify-content: center; /* center the row */
-    flex-wrap: wrap; /* wrap to next line if needed */
-    gap: 15px; /* spacing between LED items */
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 15px;
 }
+
+/* ------------------------- Collapsible Quick Commands ------------------------- */
+#quickCommandsWrapper {
+  margin-bottom: 25px;
+}
+
+#quickCommandsWrapper button#toggleQuickCommands {
+  width: 100%;
+  text-align: left;
+  background: #222;
+  color: #0f0;
+  border: none;
+  border-radius: 6px;
+  padding: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  box-shadow: 0 0 6px #0f0;
+  transition: transform 0.2s, box-shadow 0.3s;
+}
+
+#quickCommandsWrapper button#toggleQuickCommands:hover {
+  transform: scale(1.03);
+  box-shadow: 0 0 15px #0f0, 0 0 30px #0f0 inset;
+}
+
+#quickCommandsWrapper #quickCommands {
+  margin-top: 12px;
+  display: none; /* collapsed by default */
+  padding: 10px;
+  border-radius: 12px;
+}
+
+/* ------------------------- Oven Control Buttons (Start/Stop/Reset) ------------------------- */
+#burninRow button.quickBtn {
+  min-width: 100px;
+  flex-grow: 1;
+  font-size: 14px;
+  padding: 10px;
+  border-radius: 6px;
+  color: #0f0;
+  background: #222;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 0 6px #0f0;
+  transition: transform 0.2s, box-shadow 0.3s;
+}
+
+#burninRow button.quickBtn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 15px #0f0, 0 0 30px #0f0 inset;
+}
+
+
+
+/* ------------------------- Manual Command Input Styling ------------------------- */
+#manualCmd {
+  background-color: #111;
+  color: #0f0;
+  font-family: monospace;
+  font-size: 15px;
+  padding: 10px;
+  border-radius: 6px;
+  border: none;
+  text-align: center;
+  box-shadow: inset 0 0 5px #0f0;
+  transition: box-shadow 0.3s, transform 0.2s;
+}
+
+#manualCmd:focus {
+  outline: none;
+  box-shadow: inset 0 0 12px #0f0;
+  transform: scale(1.05);
+}
+/* Make Quick Commands wrapper and inner box same width as connection/status boxes */
+#quickCommandsWrapper {
+    max-width: 950px;           /* same as container max width */
+    margin: 0 auto 25px auto;   /* center horizontally and spacing below */
+    padding: 0;                 /* remove extra padding */
+    box-sizing: border-box;
+}
+
+#quickCommandsWrapper #quickCommands {
+    width: 100%;                /* fill wrapper width */
+    box-sizing: border-box;     /* include padding in width */
+    padding: 20px;              /* match other boxes */
+    border-radius: 12px;
+    background: radial-gradient(circle at top left, #1e1e1e, #111);
+    box-shadow: 0 0 15px rgba(0,255,0,0.1);
+    transition: box-shadow 0.3s;
+}
+
+/* Optional: make toggle button visually match box width */
+#toggleQuickCommands {
+    width: 100%;
+    max-width: 950px;
+    display: block;
+    margin: 0 auto 5px auto;
+    padding: 10px;
+    border-radius: 6px;
+    background: #222;
+    color: #0f0;
+    font-family: monospace;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 0 6px #0f0;
+    transition: transform 0.2s, box-shadow 0.3s;
+}
+
+#toggleQuickCommands:hover {
+    transform: scale(1.03);
+    box-shadow: 0 0 15px #0f0, 0 0 30px #0f0 inset;
+}
+
+/* Ensure all main boxes fill container width minus padding */
+.connection-box,
+.quick-commands,
+.console-box,
+#ovenStatusBox {
+    width: 100%;
+    box-sizing: border-box; /* include padding and border in width */
+}
+
+/* For Quick Commands outside container */
+#quickCommandsWrapper {
+    width: 100%;
+    max-width: 950px;       /* match container max-width */
+    margin: 0 auto 25px auto;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+#quickCommandsWrapper #quickCommands {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 20px;          /* same as other boxes */
+    border-radius: 12px;
+    background: radial-gradient(circle at top left, #1e1e1e, #111);
+    box-shadow: 0 0 15px rgba(0,255,0,0.1);
+    transition: box-shadow 0.3s;
+}
+
+
+
+/* ------------------------- Collapsible Connection Box ------------------------- */
+#connectionWrapper {
+    margin-bottom: 25px;
+}
+
+/* Toggle button like Quick Commands */
+#toggleConnection {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 6px;
+    border: none;
+    font-size: 14px;
+    background: #222;
+    color: #0f0;
+    cursor: pointer;
+    text-align: left;
+    box-shadow: 0 0 6px #0f0;
+    transition: transform 0.2s, box-shadow 0.3s;
+}
+
+#toggleConnection:hover {
+    transform: scale(1.02);
+    box-shadow: 0 0 12px #0f0, 0 0 20px #0f0 inset;
+}
+
+/* Make the connection-box appear with same width as Quick Commands */
+#connectionBox {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Ensure inner inputs match Quick Commands */
+#connectionBox .command-row input[type="text"],
+#connectionBox .command-row input[type="number"],
+#connectionBox .command-row select {
+    background-color: #111;
+    color: #0f0;
+    font-family: monospace;
+    font-size: 15px;
+    padding: 10px;
+    border-radius: 6px;
+    border: none;
+    text-align: center;
+    box-shadow: inset 0 0 5px #0f0;
+    transition: box-shadow 0.3s, transform 0.2s;
+}
+
+#connectionBox .command-row input[type="text"]:focus,
+#connectionBox .command-row input[type="number"]:focus,
+#connectionBox .command-row select:focus {
+    outline: none;
+    box-shadow: inset 0 0 12px #0f0;
+    transform: scale(1.05);
+}
+
+/* Make buttons inside connection-box share row space */
+#connectionBox .command-row .btn-glow {
+    flex-grow: 1;
+}
+
+/* ------------------------- Unified Font for Theme ------------------------- */
+body, 
+.container,
+.connection-box,
+#connectionBox,
+.quick-commands,
+#ovenStatusBox,
+.console-box,
+.command-row input,
+.command-row select,
+.command-row button,
+#manualCmd,
+.help-content,
+#manualHelpText,
+.gauge-labels,
+.gauge-row,
+.status-row,
+.led-item,
+#toggleQuickCommands,
+#toggleConnection {
+    font-family: monospace;
+    font-size: 15px;
+    color: #0f0;
+}
+
+/* Ensure inputs and textareas match */
+input[type="text"],
+input[type="number"],
+select,
+#manualCmd,
+#manualHelpText {
+    font-family: monospace;
+    font-size: 15px;
+    color: #0f0;
+    background-color: #111;
+    border-radius: 6px;
+    border: none;
+    text-align: center;
+    padding: 10px;
+    box-shadow: inset 0 0 5px #0f0;
+    transition: box-shadow 0.3s, transform 0.2s;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+select:focus,
+#manualCmd:focus {
+    outline: none;
+    box-shadow: inset 0 0 12px #0f0;
+    transform: scale(1.05);
+}
+
+/* Buttons inherit monospace font and glow styling */
+button.btn-glow,
+#toggleQuickCommands,
+#toggleConnection {
+    font-family: monospace;
+    font-size: 15px;
+    color: #0f0;
+}
+
+

@@ -1,3 +1,29 @@
+const toggleBtn = document.getElementById("toggleQuickCommands");
+const quickBox = document.getElementById("quickCommands");
+
+toggleBtn.addEventListener("click", () => {
+    if (quickBox.style.display === "none") {
+        quickBox.style.display = "block";
+        toggleBtn.textContent = "Quick Commands ▲";
+    } else {
+        quickBox.style.display = "none";
+        toggleBtn.textContent = "Quick Commands ▼";
+    }
+});
+
+const toggleConnectionBtn = document.getElementById('toggleConnection');
+const connectionBox = document.getElementById('connectionBox');
+
+toggleConnectionBtn.addEventListener('click', () => {
+  if (connectionBox.style.display === 'none') {
+    connectionBox.style.display = 'block';
+    toggleConnectionBtn.textContent = 'Connection ▲';
+  } else {
+    connectionBox.style.display = 'none';
+    toggleConnectionBtn.textContent = 'Connection ▼';
+  }
+});
+
 
 // ---------------------- Cytoscape Oven State Graph ----------------------
 const cy = cytoscape({
@@ -17,7 +43,8 @@ const cy = cytoscape({
         { data: { id: 'e4', source: 'BurnIn', target: 'WarmUp' } },
         { data: { id: 'e5', source: 'BurnIn', target: 'CoolDown' } },
         { data: { id: 'e6', source: 'BurnIn', target: 'Finished' } },
-        { data: { id: 'e7', source: 'CoolDown', target: 'Idle' } }
+        { data: { id: 'e7', source: 'CoolDown', target: 'BurnIn' } },
+        { data: { id: 'e8', source: 'CoolDown', target: 'Idle' } }
     ],
 
     style: [
@@ -93,6 +120,11 @@ const cy = cytoscape({
         name: 'preset',
         fit: false // important: do not auto-fit, let positions stick
     },
+    // ===== Disable user interaction =====
+    userZoomingEnabled: false,   // no zoom
+    userPanningEnabled: false,   // no pan
+    boxSelectionEnabled: false,  // no lasso selection
+    autoungrabify: true           // nodes cannot be grabbed
     // layout: {
     //     name: 'grid',
     //     rows: 1,
@@ -332,6 +364,21 @@ document.querySelectorAll(".quickBtn").forEach(btn => {
             case "readSettings": sendCommand("11,1"); break;
             case "readVolt": sendCommand("13,1"); break;
             case "readTemp": sendCommand("14,1"); break;
+            case "resetBurnin":
+                (async () => {
+                    // 1️⃣ Send the reset burn-in command
+                    await sendCommand("16,0");
+                    
+                    // 2️⃣ Clear the serial buffer on the server
+                    try {
+                        await fetch(`${window.APP_PREFIX}/clear`, { method: "POST" });
+                        appendConsoleLine("Serial buffer cleared after burn-in reset.");
+                    } catch (e) {
+                        console.error("Failed to clear serial buffer:", e);
+                        appendConsoleLine("ERROR: Could not clear serial buffer.");
+                    }
+                })();
+                break;
         }
     });
 });
@@ -459,6 +506,8 @@ setInterval(async () => {
         const tmin = Number(s.Tmin || 0);
         const tmax = Number(s.Tmax || 100);
         const ttarget = Number(s.Ttarget || 0);
+        const tinst = Number(s.Tinst||0);
+
 
         // pointer color depending on range
         let ovenColor = "#ffaa00";
@@ -501,6 +550,7 @@ setInterval(async () => {
         document.getElementById("labelTmax").innerText = tmax;
         document.getElementById("labelTtarget").innerText = ttarget;
         document.getElementById("labelToven").innerText = t;
+        document.getElementById("labelTinst").innerText = tinst;
 
         // -----------------------------
         // Burn-in clock

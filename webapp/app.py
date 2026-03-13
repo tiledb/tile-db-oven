@@ -85,7 +85,7 @@ def influx_manager():
             except Exception as reconnect_error:
                 print(f"[INFLUX] Reconnect failed: {reconnect_error}")
 
-        time.sleep(30)
+        time.sleep(5)
         
 
 
@@ -126,6 +126,7 @@ oven_status = {
     "Tmax": "",
     "Ttarget": "",
     "Toven": "",
+    "Tinst": "",
     "RunHours": "",
     "RunMins": "",
     "RunTotalMins": "",
@@ -134,6 +135,7 @@ oven_status = {
     "RunningTime": "",
     "Debug": "",
     "State": "",
+    "PreviousState": "",
     "EnableRun": "",
     "EnableHeater": "",
     "LV0": "",
@@ -329,8 +331,8 @@ def connect():
         return jsonify({"status": "waiting_for_device"})
 
 
-@app.route("/disconnect", methods=["POST"])
-def disconnect():
+@app.route("/clear", methods=["POST"])
+def clear():
     """
     Frontend terminal reset only.
     Does not close serial port.

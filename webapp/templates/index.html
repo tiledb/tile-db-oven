@@ -5,14 +5,9 @@
   <meta charset="UTF-8">
   <title>DB Oven Controller</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-
-  <!-- <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> -->
   <script src="{{ url_for('static', filename='echarts.min.js') }}"></script>
   <script src="{{ url_for('static', filename='chart.js') }}"></script>
-  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.25.2/cytoscape.min.js"></script> -->
   <script src="{{ url_for('static', filename='cytoscape.min.js') }}"></script>
-
 </head>
 
 <body>
@@ -21,93 +16,68 @@
     window.APP_PREFIX = "{{ prefix }}";
     console.log("Using API prefix:", window.APP_PREFIX);
   </script>
+
   <div class="container">
 
-    <h1>DB Oven Controller</h1>
+    <h1>DB Oven Controller <span class="led red" id="connectionLed"></span> </h1>
 
-    <!-- Connection box -->
-    <div class="connection-box">
-      <h2>Connection ->
-        <span class="led red" id="connectionLed"></span>
-        <span id="connectLabel">Waiting for device</span>
-        <span class="help-bubble" id="manualHelp">?</span>
-      </h2>
-      <div class="command-row">
-        <select id="port">
-          {% for p in ports %}
-          <option value="{{ p }}" {% if p==default_port %}selected{% endif %}>{{ p }}</option>
-          {% endfor %}
-        </select>
+    <!-- Connection Box Wrapper -->
+    <div id="connectionWrapper">
+      <button id="toggleConnection" class="btn-glow btn-set">Connection ▼ </button>
 
-        <input type="number" id="baudrate" value="{{ default_baudrate }}" step="1">
+      <div class="connection-box" id="connectionBox" style="display: none;">
+        <h2>
+          Connection ->
 
-        <span id="connectionStatus">
+          <span id="connectLabel">Waiting for device</span>
+          <span class="help-bubble" id="manualHelp">?</span>
+        </h2>
+        <div class="command-row">
+          <select id="port">
+            {% for p in ports %}
+            <option value="{{ p }}" {% if p==default_port %}selected{% endif %}>{{ p }}</option>
+            {% endfor %}
+          </select>
 
-        </span>
-        <input type="text" id="manualCmd" placeholder="Enter manual command">
-        <button id="sendBtn" class="btn-set btn-glow">Send</button>
-        <button id="downloadLogBtn" class="btn-glow">Download Log</button>
+          <input type="number" id="baudrate" value="{{ default_baudrate }}" step="1">
 
+          <span id="connectionStatus"></span>
+
+          <input type="text" id="manualCmd" placeholder="Enter manual command">
+
+          <button id="sendBtn" class="btn-set btn-glow">Send</button>
+          <button id="downloadLogBtn" class="btn-glow">Download Log</button>
+        </div>
       </div>
-
-
-
     </div>
 
+    <!-- Oven Status box -->
     <div class="quick-commands" id="ovenStatusBox">
-      <h2>Oven Status</h2>
+      <h2>Oven Control</h2>
 
-      <!-- Temperature Gauge -->
+      <!-- Temperature Gauge & Burn-in Clock -->
       <div class="status-row">
         <div id="tempGauge" style="width:200px;height:200px;"></div>
 
         <div class="gauge-labels">
-          <div class="gauge-row">
-            <span class="status-label">Tmin:</span>
-            <span id="labelTmin">0</span>°C
-          </div>
-
-          <div class="gauge-row">
-            <span class="status-label">Ttarget:</span>
-            <span id="labelTtarget">0</span>°C
-          </div>
-
-          <div class="gauge-row">
-            <span class="status-label">Tmax:</span>
-            <span id="labelTmax">0</span>°C
-          </div>
-
-          <div class="gauge-row">
-            <span class="status-label">Toven:</span>
-            <span id="labelToven">0</span>°C
-          </div>
+          <div class="gauge-row"><span class="status-label">Tmin:</span> <span id="labelTmin">0</span>°C</div>
+          <div class="gauge-row"><span class="status-label">Ttarget:</span> <span id="labelTtarget">0</span>°C</div>
+          <div class="gauge-row"><span class="status-label">Tmax:</span> <span id="labelTmax">0</span>°C</div>
+          <div class="gauge-row"><span class="status-label">Toven:</span> <span id="labelToven">0</span>°C</div>
+          <div class="gauge-row"><span class="status-label">Tinst:</span> <span id="labelTinst">0</span>°C</div>
         </div>
 
+        <div id="burninClock" style="width: 200px; height: 200px;"></div>
 
-
-        <!-- Burn-in Clock -->
-        <div id="burninClock" style="width: 200px; height: 200px; display:inline-block;"></div>
-
-        <div class="clock-labels">
-
-          <div class="gauge-row">
-            <span class="status-label">RunTotal:</span>
-            <span id="statusRunTotalMins">00:00:00</span>
+        <div class="gauge-labels">
+          <div class="gauge-row"><span class="status-label">RunTotal:</span> <span
+              id="statusRunTotalMins">00:00:00</span></div>
+          <div class="gauge-row"><span class="status-label">Accrued:</span> <span
+              id="statusBurninAccruedSecs">00:00:00</span></div>
+          <div class="gauge-row"><span class="status-label">Running:</span> <span id="statusRunningTime">00:00:00</span>
           </div>
-
-          <div class="gauge-row">
-            <span class="status-label">Accrued:</span>
-            <span id="statusBurninAccruedSecs">00:00:00</span>
-          </div>
-
-          <div class="gauge-row">
-            <span class="status-label">Running:</span>
-            <span id="statusRunningTime">00:00:00</span>
-          </div>
-
         </div>
       </div>
-
 
       <div id="ovenStateGraph-container">
         <div id="ovenStateGraph" style="width: 400px; height: 100px; border: 1px solid #222; border-radius:10px;"></div>
@@ -125,71 +95,66 @@
         </div>
       </div>
 
-
-
+      <!-- Burn-in buttons -->
+      <div class="command-row" id="burninRow">
+        <button class="quickBtn btn-glow btn-set" data-cmd="start">Start Burn-in</button>
+        <button class="quickBtn btn-glow btn-set" data-cmd="stop">Stop Burn-in</button>
+        <button class="quickBtn btn-glow btn-set" data-cmd="resetBurnin">Reset Burn-in Status</button>
+      </div>
     </div>
 
-    <div class="quick-commands">
-      <h2>Quick Commands</h2>
+    <!-- Quick Commands -->
+    <div id="quickCommandsWrapper">
+      <button id="toggleQuickCommands">Quick Commands ▼</button>
+      <div class="quick-commands" id="quickCommands" style="display:none;">
+        <h2>Quick Commands</h2>
 
-      <!-- NEW Burn-in Row -->
-      <div class="command-row" id="burninRow">
-        <button id="startBurninBtn" class="quickBtn btn-glow btn-enable" data-cmd="start">Start Burn-in</button>
-        <button id="stopBurninBtn" class="quickBtn btn-glow btn-disable" data-cmd="stop">Stop Burn-in</button>
-      </div>
+        <div class="command-row">
+          <button class="quickBtn btn-set btn-glow" data-cmd="setTime">Set Time</button>
+          <input type="number" id="hours" placeholder="Hours" value="{{ default_run_hours }}">
+          <input type="number" id="minutes" placeholder="Minutes" value="{{ default_run_minutes }}">
+          <button class="quickBtn btn-set btn-glow" data-cmd="minTemp">Set Min</button>
+          <input type="number" id="minTemp" placeholder="Min Temp °C" value="{{ default_min_temp }}">
+          <button class="quickBtn btn-set btn-glow" data-cmd="targetTemp">Set Target</button>
+          <input type="number" id="targetTemp" placeholder="Target Temp °C" value="{{ default_target_temp }}">
+          <button class="quickBtn btn-set btn-glow" data-cmd="maxTemp">Set Max</button>
+          <input type="number" id="maxTemp" placeholder="Max Temp °C" value="{{ default_max_temp }}">
+        </div>
 
-      <!-- Running Time / Min / Max Temp in one row -->
-      <div class="command-row">
-        <button class="quickBtn btn-set btn-glow" data-cmd="setTime">Set Time</button>
-        <input type="number" id="hours" placeholder="Hours" value="{{ default_run_hours }}">
-        <input type="number" id="minutes" placeholder="Minutes" value="{{ default_run_minutes }}">
+        <div class="command-row">
+          <button class="quickBtn btn-enable btn-glow" data-cmd="enableHeater">Enable Heater</button>
+          <button class="quickBtn btn-disable btn-glow" data-cmd="disableHeater">Disable Heater</button>
+          <button class="quickBtn btn-enable btn-glow" data-cmd="enablePower">Enable Power</button>
+          <button class="quickBtn btn-disable btn-glow" data-cmd="disablePower">Disable Power</button>
+        </div>
 
-        <button class="quickBtn btn-set btn-glow" data-cmd="minTemp">Set Min</button>
-        <input type="number" id="minTemp" placeholder="Min Temp °C" value="{{ default_min_temp }}">
+        <div class="command-row">
+          <button class="quickBtn btn-enable btn-glow" data-cmd="enableDB0">Enable DB0</button>
+          <button class="quickBtn btn-disable btn-glow" data-cmd="disableDB0">Disable DB0</button>
+          <button class="quickBtn btn-enable btn-glow" data-cmd="enableDB1">Enable DB1</button>
+          <button class="quickBtn btn-disable btn-glow" data-cmd="disableDB1">Disable DB1</button>
+          <button class="quickBtn btn-enable btn-glow" data-cmd="enableDB2">Enable DB2</button>
+          <button class="quickBtn btn-disable btn-glow" data-cmd="disableDB2">Disable DB2</button>
+          <button class="quickBtn btn-enable btn-glow" data-cmd="enableDB3">Enable DB3</button>
+          <button class="quickBtn btn-disable btn-glow" data-cmd="disableDB3">Disable DB3</button>
+        </div>
 
-        <button class="quickBtn btn-set btn-glow" data-cmd="targetTemp">Set Target</button>
-        <input type="number" id="targetTemp" placeholder="Target Temp °C" value="{{ default_target_temp }}">
+        <div class="command-row">
+          <button class="quickBtn btn-set btn-glow" data-cmd="readSettings">Read Settings</button>
+          <button class="quickBtn btn-set btn-glow" data-cmd="readTemp">Read Temp</button>
+          <button class="quickBtn btn-set btn-glow" data-cmd="readVolt">Read Volt</button>
+        </div>
 
-        <button class="quickBtn btn-set btn-glow" data-cmd="maxTemp">Set Max</button>
-        <input type="number" id="maxTemp" placeholder="Max Temp °C" value="{{ default_max_temp }}">
-      </div>
-
-      <!-- Heater / Power in one row -->
-      <div class="command-row">
-        <button class="quickBtn btn-enable btn-glow" data-cmd="enableHeater">Enable Heater</button>
-        <button class="quickBtn btn-disable btn-glow" data-cmd="disableHeater">Disable Heater</button>
-        <button class="quickBtn btn-enable btn-glow" data-cmd="enablePower">Enable Power</button>
-        <button class="quickBtn btn-disable btn-glow" data-cmd="disablePower">Disable Power</button>
-      </div>
-
-      <!-- DB LV Power Supplies in one row -->
-      <div class="command-row">
-        <button class="quickBtn btn-enable btn-glow" data-cmd="enableDB0">Enable DB0</button>
-        <button class="quickBtn btn-disable btn-glow" data-cmd="disableDB0">Disable DB0</button>
-        <button class="quickBtn btn-enable btn-glow" data-cmd="enableDB1">Enable DB1</button>
-        <button class="quickBtn btn-disable btn-glow" data-cmd="disableDB1">Disable DB1</button>
-        <button class="quickBtn btn-enable btn-glow" data-cmd="enableDB2">Enable DB2</button>
-        <button class="quickBtn btn-disable btn-glow" data-cmd="disableDB2">Disable DB2</button>
-        <button class="quickBtn btn-enable btn-glow" data-cmd="enableDB3">Enable DB3</button>
-        <button class="quickBtn btn-disable btn-glow" data-cmd="disableDB3">Disable DB3</button>
-      </div>
-
-      <!-- Read / Settings buttons in one row -->
-      <div class="command-row">
-        <button class="quickBtn btn-set btn-glow" data-cmd="readSettings">Read Settings</button>
-        <button class="quickBtn btn-set btn-glow" data-cmd="readTemp">Read Temp</button>
-        <button class="quickBtn btn-set btn-glow" data-cmd="readVolt">Read Volt</button>
       </div>
     </div>
 
     <!-- Console -->
-    <div class="console-header">
-      Console <span class="led" id="receiveLed"></span>
-    </div>
+    <div class="console-header">Console <span class="led" id="receiveLed"></span></div>
     <div class="console-box">
       <div id="consoleOutput"></div>
     </div>
-  </div>
+
+  </div> <!-- end container -->
 
   <!-- Manual Help Modal -->
   <div id="manualHelpOverlay" class="help-overlay">
