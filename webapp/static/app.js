@@ -1,3 +1,337 @@
+
+// ==================================================
+// 🔥 THERMAL CAMERA HEATMAP (INTEGRATED)
+// ==================================================
+
+
+const histogramEl = document.getElementById("histogram");
+
+
+// ---------------------------
+// CONFIG
+// ---------------------------
+const width = 32;
+const height = 24;
+const blockSize = 30; // size of each heatmap block
+
+const canvas = document.getElementById("image");
+const ctx = canvas.getContext("2d");
+
+canvas.width = width * blockSize;
+canvas.height = height * blockSize;
+
+// Dynamic scale & gamma controls
+const dynamicScaleToggle = document.getElementById("dynamicScaleToggle");
+const gammaSlider = document.getElementById("gammaSlider");
+const gammaValue = document.getElementById("gammaValue");
+
+// Stats elements
+const minTempEl = document.getElementById("minTemp");
+const maxTempEl = document.getElementById("maxTemp");
+const avgTempEl = document.getElementById("avgTemp");
+const medianTempEl = document.getElementById("medianTemp");
+const stdevTempEl = document.getElementById("stdevTemp");
+const rangeTempEl = document.getElementById("rangeTemp");
+const burnInEl = document.getElementById("burnInPixels");
+const overtempEl = document.getElementById("overtempPixels");
+const hotspotStrengthEl = document.getElementById("hotspotStrength");
+const centerEl = document.getElementById("centerPos");
+const hotspotEl = document.getElementById("hotspotPos");
+const coldspotEl = document.getElementById("coldspotPos");
+const p10El = document.getElementById("p10Val");
+const p90El = document.getElementById("p90Val");
+const hotAreaEl = document.getElementById("hotArea");
+
+// LED flags
+const overheatFlag = document.getElementById("overheatFlag");
+const burnInFlag = document.getElementById("burnInFlag");
+
+// ---------------------------
+// GRADIENT
+// ---------------------------
+const gradientSize = 1000;
+const gradientLookupTable = [];
+const gradientStops = [
+  { pos: 0, color: [0, 0, 0] },
+  { pos: 0.1, color: [50, 0, 100] },
+  { pos: 0.25, color: [204, 0, 119] },
+  { pos: 0.45, color: [255, 70, 0] },
+  { pos: 0.6, color: [255, 140, 0] },
+  { pos: 0.75, color: [255, 215, 0] },
+  { pos: 0.9, color: [255, 240, 200] },
+  { pos: 1, color: [255, 255, 255] },
+];
+for (let i = 0; i < gradientSize; ++i) {
+  const pos = i / (gradientSize - 1);
+  for (let j = 0; j < gradientStops.length - 1; ++j) {
+    const start = gradientStops[j];
+    const end = gradientStops[j + 1];
+    if (pos >= start.pos && (pos < end.pos || end.pos === 1)) {
+      const local = (pos - start.pos) / (end.pos - start.pos);
+      const r = start.color[0] + local * (end.color[0] - start.color[0]);
+      const g = start.color[1] + local * (end.color[1] - start.color[1]);
+      const b = start.color[2] + local * (end.color[2] - start.color[2]);
+      gradientLookupTable.push([r | 0, g | 0, b | 0]);
+      break;
+    }
+  }
+}
+
+// ---------------------------
+// TEMPERATURE → COLOR
+// ---------------------------
+const fixedMin = 25;
+const fixedMax = 75;
+
+function temperatureToColorEnhanced(temp, data = null) {
+  // Dynamic scale
+  let minVal = fixedMin;
+  let maxVal = fixedMax;
+  if (dynamicScaleToggle.checked && data) {
+    minVal = Math.min(...data);
+    maxVal = Math.max(...data);
+  }
+
+  // Normalize
+  let v = (temp - minVal) / (maxVal - minVal);
+  v = Math.min(Math.max(v, 0), 1);
+
+  // Apply gamma
+  const gamma = parseFloat(gammaSlider.value);
+  v = Math.pow(v, gamma);
+
+  const index = Math.floor(v * (gradientSize - 1));
+  return gradientLookupTable[index];
+}
+
+
+
+
+// ---------------------------
+// DRAW HEATMAP
+// ---------------------------
+function drawHeatmap(data, stats) {
+    if (!data || !stats) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const maxVal = stats.max;              // Python-computed max
+    const hotThreshold = maxVal - 2.0;     // hot area threshold
+    const maxIdx = data.findIndex(v => Math.abs(v - maxVal) < 0.001);
+    const hY = Math.floor(maxIdx / width);
+    const hX = maxIdx % width;
+
+    const now = Date.now(); // for pulse animation
+
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const temp = data[y * width + x];
+            const [r, g, b] = temperatureToColorEnhanced(temp, data);
+            ctx.fillStyle = `rgb(${r},${g},${b})`;
+            ctx.fillRect(x * blockSize, y * blockSize, blockSize, blockSize);
+
+            // ---------------------------
+            // Hot area highlight (> max-2°C)
+            // ---------------------------
+            if (temp >= hotThreshold) {
+                ctx.fillStyle = "rgba(255,0,0,0.2)"; // light red fill
+                ctx.fillRect(x * blockSize, y * blockSize, blockSize, blockSize);
+
+                ctx.strokeStyle = "rgba(255,0,0,1)"; // bright red border
+                ctx.lineWidth = 4;  // thicker stroke
+                ctx.shadowColor = "rgba(255,0,0,0.7)";
+                ctx.shadowBlur = 8;
+                ctx.strokeRect(x * blockSize, y * blockSize, blockSize, blockSize);
+                ctx.shadowBlur = 0; // reset shadow
+            }
+        }
+    }
+
+    // ---------------------------
+    // Hot pixel highlight (max)
+    // ---------------------------
+    const pulseRadius = blockSize / 2 + Math.sin(now / 200) * 5;
+    ctx.beginPath();
+    ctx.arc(
+        hX * blockSize + blockSize / 2,
+        hY * blockSize + blockSize / 2,
+        pulseRadius,
+        0,
+        2 * Math.PI
+    );
+    ctx.fillStyle = "rgba(0,255,0,0.3)"; // semi-transparent green fill
+    ctx.fill();
+    ctx.strokeStyle = "rgba(0,255,0,1)";
+    ctx.lineWidth = 5;  // thicker border
+    ctx.shadowColor = "rgba(0,255,0,0.7)";
+    ctx.shadowBlur = 10;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // ---------------------------
+    // Pixel grid
+    // ---------------------------
+    ctx.strokeStyle = "rgba(255,255,255,0.2)";
+    ctx.lineWidth = 1;
+    for (let x = 0; x <= width; x++) {
+        ctx.beginPath();
+        ctx.moveTo(x * blockSize, 0);
+        ctx.lineTo(x * blockSize, height * blockSize);
+        ctx.stroke();
+    }
+    for (let y = 0; y <= height; y++) {
+        ctx.beginPath();
+        ctx.moveTo(0, y * blockSize);
+        ctx.lineTo(width * blockSize, y * blockSize);
+        ctx.stroke();
+    }
+
+    // ---------------------------
+    // HISTOGRAM
+    // ---------------------------
+    let histMin = fixedMin;
+    let histMax = fixedMax;
+    if (dynamicScaleToggle.checked && data) {
+        histMin = Math.min(...data);
+        histMax = Math.max(...data);
+    }
+
+    Plotly.react(
+        histogramEl,
+        [
+            {
+                x: Array.from(data),
+                type: "histogram",
+                marker: { color: "#00d1ff" },
+                autobinx: false,
+                xbins: { start: histMin, end: histMax, size: 1 }
+            }
+        ],
+        {
+            margin: { t: 20, l: 40, r: 20, b: 40 },
+            paper_bgcolor: "#0f0f1a",
+            plot_bgcolor: "#1a1a2e",
+            font: { color: "#eee" },
+            xaxis: { range: [histMin, histMax] }
+        },
+        { displayModeBar: false }
+    );
+}
+
+// --- Hover tooltip ---
+const tooltip = document.createElement("div");
+tooltip.style.position = "absolute";
+tooltip.style.padding = "4px 8px";
+tooltip.style.background = "rgba(0,0,0,0.7)";
+tooltip.style.color = "#fff";
+tooltip.style.borderRadius = "4px";
+tooltip.style.fontSize = "12px";
+tooltip.style.pointerEvents = "none";
+tooltip.style.display = "none";
+document.body.appendChild(tooltip);
+
+canvas.addEventListener("mousemove", (e) => {
+    if (!lastData) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    const mouseX = (e.clientX - rect.left) * scaleX;
+    const mouseY = (e.clientY - rect.top) * scaleY;
+
+    const x = Math.floor(mouseX / blockSize);
+    const y = Math.floor(mouseY / blockSize);
+
+    if (x >= 0 && x < width && y >= 0 && y < height) {
+        const temp = lastData[y * width + x].toFixed(2);
+        tooltip.textContent = `(${x}, ${y}) : ${temp} °C`;
+        tooltip.style.left = `${e.pageX + 10}px`;
+        tooltip.style.top = `${e.pageY + 10}px`;
+        tooltip.style.display = "block";
+    } else {
+        tooltip.style.display = "none";
+    }
+});
+
+canvas.addEventListener("mouseleave", () => {
+    tooltip.style.display = "none";
+});
+
+
+// ---------------------------
+// UPDATE STATS PANEL
+// ---------------------------
+function updateStatsPanel(stats) {
+  minTempEl.textContent = `Min: ${stats.min} °C`;
+  maxTempEl.textContent = `Max: ${stats.max} °C`;
+  avgTempEl.textContent = `Avg: ${stats.avg} °C`;
+  medianTempEl.textContent = `Median: ${stats.median} °C`;
+  stdevTempEl.textContent = `Std Dev: ${stats.stdev}`;
+  rangeTempEl.textContent = `Range: ${stats.range} °C`;
+  burnInEl.textContent = `Burn-In Pixels (65–70°C): ${stats.burn_in_pixels}`;
+  overtempEl.textContent = `OverTemp Pixels (>70°C): ${stats.overtemp_pixels}`;
+  hotspotStrengthEl.textContent = `Hotspot Strength: ${stats.hotspot_strength}`;
+  centerEl.textContent = `Center: ${stats.center}`;
+  hotspotEl.textContent = `Hotspot (x,y): (${stats.hotspot_x}, ${stats.hotspot_y})`;
+  coldspotEl.textContent = `Coldspot (x,y): (${stats.coldspot_x}, ${stats.coldspot_y})`;
+  p10El.textContent = `P10: ${stats.p10}`;
+  p90El.textContent = `P90: ${stats.p90}`;
+  hotAreaEl.textContent = `Hot Area (>70°C): ${stats.hot_area}`;
+
+  overheatFlag.className = stats.overheat ? "led red" : "led green";
+  burnInFlag.className = stats.burn_in_risk ? "led red" : "led green";
+}
+
+// ---------------------------
+// FETCH CAMERA & STATS
+// ---------------------------
+let lastData = null;
+let lastStats = null;
+
+async function fetchThermal() {
+  try {
+    const [frameRes, statsRes] = await Promise.all([
+      fetch("/camera/frame"),
+      fetch("/camera/stats")
+    ]);
+
+    const buf = await frameRes.arrayBuffer();
+    const data = new Float32Array(buf);
+
+    const stats = await statsRes.json();
+
+    if (data.length === width * height) {
+      lastData = data;
+      lastStats = stats;
+      drawHeatmap(lastData, lastStats);
+      updateStatsPanel(lastStats);
+    }
+  } catch (err) {
+    console.error("Thermal fetch failed", err);
+  }
+}
+
+// ---------------------------
+// EVENT LISTENERS
+// ---------------------------
+gammaSlider.addEventListener("input", () => {
+    gammaValue.textContent = parseFloat(gammaSlider.value).toFixed(2);
+    if (lastData) drawHeatmap(lastData, lastStats);
+});
+
+dynamicScaleToggle.addEventListener("change", () => {
+    if (lastData) drawHeatmap(lastData, lastStats);
+});
+
+// ---------------------------
+// START LOOP
+// ---------------------------
+setInterval(fetchThermal, 2000);
+
+
+
+
 const toggleBtn = document.getElementById("toggleQuickCommands");
 const quickBox = document.getElementById("quickCommands");
 
@@ -30,11 +364,11 @@ const cy = cytoscape({
     container: document.getElementById('ovenStateGraph'),
     elements: [
         // nodes
-        { data: { id: 'Idle', label: 'Idle' }, position: { x: 50, y: 75 } },
-        { data: { id: 'WarmUp', label: 'Warm-up' }, position: { x: 100, y: 25 } },
-        { data: { id: 'BurnIn', label: 'Burn-in' }, position: { x: 300, y: 25 } },
-        { data: { id: 'CoolDown', label: 'Cool-down' }, position: { x: 350, y: 75 } },
-        { data: { id: 'Finished', label: 'Finished' }, position: { x: 200, y: 75 } },
+        { data: { id: 'Idle', label: 'Idle' }, position: { x: 35, y: 125 } },
+        { data: { id: 'WarmUp', label: 'Warm-up' }, position: { x: 60, y: 50 } },
+        { data: { id: 'BurnIn', label: 'Burn-in' }, position: { x: 140, y: 50 } },
+        { data: { id: 'CoolDown', label: 'Cool-down' }, position: { x: 165, y: 125 } },
+        { data: { id: 'Finished', label: 'Finished' }, position: { x: 100, y: 175 } },
 
         // edges
         { data: { id: 'e1', source: 'Idle', target: 'WarmUp' } },

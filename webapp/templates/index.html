@@ -8,6 +8,7 @@
   <script src="{{ url_for('static', filename='echarts.min.js') }}"></script>
   <script src="{{ url_for('static', filename='chart.js') }}"></script>
   <script src="{{ url_for('static', filename='cytoscape.min.js') }}"></script>
+  <script src="https://piro-atlas-lab.fysik.su.se/weblibs/plotly-3.1.1.min.js"></script>
 </head>
 
 <body>
@@ -60,7 +61,7 @@
 
       <!-- Temperature Gauge & Burn-in Clock -->
       <div class="status-row">
-        <div id="tempGauge" style="width:200px;height:200px;"></div>
+        <div id="tempGauge" style="width:190px;height:190px;"></div>
 
         <div class="gauge-labels">
           <div class="gauge-row"><span class="status-label">Tmin:</span> <span id="labelTmin">0</span>°C</div>
@@ -70,7 +71,7 @@
           <div class="gauge-row"><span class="status-label">Tinst:</span> <span id="labelTinst">0</span>°C</div>
         </div>
 
-        <div id="burninClock" style="width: 200px; height: 200px;"></div>
+        <div id="burninClock" style="width: 190px; height: 190px;"></div>
 
         <div class="gauge-labels">
           <div class="gauge-row">
@@ -87,10 +88,11 @@
               id="proccessorRunningTime">00:00:00</span>
           </div>
         </div>
+        <div id="ovenStateGraph" style="width: 210px; height: 200px; border: 1px solid #222; border-radius:10px;"></div>
       </div>
 
       <div id="ovenStateGraph-container">
-        <div id="ovenStateGraph" style="width: 400px; height: 100px; border: 1px solid #222; border-radius:10px;"></div>
+
 
         <!-- LED indicators -->
         <div class="status-row leds">
@@ -114,6 +116,71 @@
         <button class="quickBtn btn-glow btn-set" data-cmd="stop">Stop Burn-in</button>
         <button class="quickBtn btn-glow btn-set" data-cmd="resetBurnin">Reset Burn-in Status</button>
       </div>
+    </div>
+
+    <div class="quick-commands" id="thermalSection">
+      <h2>Thermal Camera</h2>
+
+      <!-- MAIN ROW -->
+      <div class="thermal-row">
+
+        <!-- LEFT: HEATMAP -->
+        <div class="thermal-box">
+          <div id="heatmap-wrapper">
+            <canvas id="image"></canvas>
+
+            <div class="controls">
+              <label>
+                <input type="checkbox" id="dynamicScaleToggle" checked>
+                Dynamic
+              </label>
+
+              <label>
+                γ:
+                <input type="range" id="gammaSlider" min="0.5" max="10" step="0.1" value="1">
+                <span id="gammaValue">1.00</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- CENTER: HISTOGRAM -->
+        <div class="thermal-box">
+          <div id="histogram"></div>
+        </div>
+
+        <!-- RIGHT: STATS -->
+        <div class="thermal-box stats-box">
+          <div id="stats">
+            <div id="minTemp">Min: --</div>
+            <div id="maxTemp">Max: --</div>
+            <div id="avgTemp">Avg: --</div>
+            <div id="medianTemp">Median: --</div>
+            <div id="stdevTemp">Std Dev: --</div>
+            <div id="rangeTemp">Range: --</div>
+
+            <hr>
+
+            <div id="burnInPixels">Burn-In: --</div>
+            <div id="overtempPixels">OverTemp: --</div>
+            <div id="hotspotStrength">Hotspot: --</div>
+            <div id="centerPos">Center: --</div>
+            <div id="hotspotPos">Hotspot: --</div>
+            <div id="coldspotPos">Coldspot: --</div>
+            <div id="p10Val">P10: --</div>
+            <div id="p90Val">P90: --</div>
+            <div id="hotArea">Hot Area: --</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- LED ROW UNDER -->
+      <div class="thermal-leds">
+        <div class="led-item">Overheat <span id="overheatFlag" class="led"></span></div>
+        <div class="led-item">Burn-In <span id="burnInFlag" class="led"></span></div>
+      </div>
+
     </div>
 
     <!-- Quick Commands -->

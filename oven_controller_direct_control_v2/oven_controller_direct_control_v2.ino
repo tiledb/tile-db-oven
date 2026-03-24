@@ -656,7 +656,7 @@ void loop() {
         // hours = 0;
         // minutes = 0;
 
-        if (temp_calibrated < target_temperature) {
+        if (temp_calibrated < (target_temperature + max_temperature)/2) {
           state = 2; // Temperature below min burn-in temperature. Go to idle state but mantain registers
           previous_state =3;
           startMilTime = millis(); // keep track of the time when we enter burnin state

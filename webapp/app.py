@@ -34,6 +34,10 @@ influxdb = InfluxDBClient(
 )
 
 
+import struct
+import requests
+import numpy as np
+
 # ---------------------------------------------------
 # INFLUXDB THREAD
 # ---------------------------------------------------
@@ -152,6 +156,109 @@ oven_status = {
 
 oven_timestamp = None
 oven_status_lock = threading.Lock()
+
+
+# ==========================================================
+# CAMERA GLOBAL STATE
+# ==========================================================
+camera_frame = None
+camera_stats = {}
+camera_lock = threading.Lock()
+
+CAMERA_URL = "http://192.168.0.90/byte_array"
+
+
+# ==========================================================
+# CAMERA FUNCTIONS
+# ==========================================================
+
+def fetch_camera_frame():
+    r = requests.get(CAMERA_URL, timeout=2)
+    return struct.unpack('<768f', r.content)
+
+
+def compute_camera_stats(frame):
+    arr = np.array(frame, dtype=np.float32)
+
+    min_val = float(np.min(arr))
+    max_val = float(np.max(arr))
+    avg = float(np.mean(arr))
+    median = float(np.median(arr))
+    stdev = float(np.std(arr))
+
+    range_val = max_val - min_val
+    hotspot_strength = max_val - median
+
+    burn_in_low = 65.0
+    burn_in_high = 70.0
+    overtemp_threshold = 70.0
+
+    burn_in_pixels = int(np.sum((arr >= burn_in_low) & (arr <= burn_in_high)))
+    overtemp_pixels = int(np.sum(arr > overtemp_threshold))
+
+    max_idx = int(np.argmax(arr))
+    min_idx = int(np.argmin(arr))
+
+    h_y, h_x = divmod(max_idx, 32)
+    c_y, c_x = divmod(min_idx, 32)
+
+    center = arr[12 * 32 + 16]
+
+    p10 = float(np.percentile(arr, 10))
+    p90 = float(np.percentile(arr, 90))
+
+    hot_area = int(np.sum(arr > (max_val - 2.0)))
+
+    return {
+        "min": round(min_val, 2),
+        "max": round(max_val, 2),
+        "avg": round(avg, 2),
+        "median": round(median, 2),
+        "stdev": round(stdev, 2),
+        "range": round(range_val, 2),
+        "hotspot_strength": round(hotspot_strength, 2),
+        "burn_in_pixels": burn_in_pixels,
+        "overtemp_pixels": overtemp_pixels,
+        "center": round(float(center), 2),
+        "hotspot_x": h_x,
+        "hotspot_y": h_y,
+        "coldspot_x": c_x,
+        "coldspot_y": c_y,
+        "p10": round(p10, 2),
+        "p90": round(p90, 2),
+        "hot_area": hot_area,
+        "overheat": int(overtemp_pixels > 0),
+        "burn_in_risk": int(burn_in_pixels > 0),
+    }
+
+# ==========================================================
+# CAMERA THREAD
+# ==========================================================
+
+def camera_manager():
+    global camera_frame, camera_stats
+
+    while True:
+        try:
+            frame = fetch_camera_frame()
+            stats = compute_camera_stats(frame)
+
+            with camera_lock:
+                camera_frame = frame
+                camera_stats = stats
+
+        except Exception as e:
+            print(f"[CAMERA] Error: {e}")
+
+        time.sleep(2)
+
+
+def start_camera_thread():
+    t = threading.Thread(target=camera_manager, daemon=True)
+    t.start()
+
+
+
 
 
 # ---------------------------------------------------
@@ -435,6 +542,29 @@ def observer():
 
     return response
 
+# ==========================================================
+# CAMERA API
+# ==========================================================
+
+@app.route("/camera/frame")
+def camera_frame_route():
+    with camera_lock:
+        if camera_frame is None:
+            return "No frame", 503
+
+        if len(camera_frame) != 768:
+            return f"Bad frame size: {len(camera_frame)}", 500
+
+        packed = struct.pack('<768f', *camera_frame)
+
+    return packed, 200, {'Content-Type': 'application/octet-stream'}
+
+
+@app.route("/camera/stats")
+def camera_stats_route():
+    with camera_lock:
+        return jsonify(camera_stats)
+
 # ---------------------------------------------------
 # CLEANUP
 # ---------------------------------------------------
@@ -462,6 +592,7 @@ if __name__ == "__main__":
 
     start_serial_thread()
     start_influx_thread()
+    start_camera_thread() 
 
     app.run(
         host="0.0.0.0",
